@@ -66,7 +66,7 @@ export default function SettingsScreen() {
         "• SAMHSA National Helpline: 1-800-662-4357\n" +
         "• Crisis Chat: suicidepreventionlifeline.org\n\n" +
         "If you're in immediate danger, please call 911 or go to your nearest emergency room.",
-      [{ text: "OK", style: "default" }],
+      [{ text: "OK", style: "default" }]
     );
   };
 
@@ -77,7 +77,7 @@ export default function SettingsScreen() {
         "This app provides supportive conversations and mental health resources. " +
         "It is not a replacement for professional mental health care.\n\n" +
         "Always consult with a qualified mental health professional for serious concerns.",
-      [{ text: "OK", style: "default" }],
+      [{ text: "OK", style: "default" }]
     );
   };
 
@@ -87,7 +87,7 @@ export default function SettingsScreen() {
       "Your conversations are stored locally on your device and are not shared with third parties. " +
         "We are committed to protecting your privacy and maintaining the confidentiality of your data.\n\n" +
         "For more information, visit our full privacy policy.",
-      [{ text: "OK", style: "default" }],
+      [{ text: "OK", style: "default" }]
     );
   };
 
@@ -107,11 +107,11 @@ export default function SettingsScreen() {
               [
                 { text: "Cancel", style: "cancel" },
                 { text: "Delete", style: "destructive" },
-              ],
+              ]
             );
           },
         },
-      ],
+      ]
     );
   };
 
