@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import {
   StyleSheet,
   Text,
@@ -7,8 +7,8 @@ import {
   ScrollView,
   TextInput,
   Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 interface MoodLevel {
   value: number;
@@ -18,11 +18,11 @@ interface MoodLevel {
 }
 
 const moodLevels: MoodLevel[] = [
-  { value: 1, label: 'Very Bad', emoji: '😭', color: '#e74c3c' },
-  { value: 2, label: 'Bad', emoji: '😢', color: '#f39c12' },
-  { value: 3, label: 'Okay', emoji: '😐', color: '#f1c40f' },
-  { value: 4, label: 'Good', emoji: '😊', color: '#2ecc71' },
-  { value: 5, label: 'Excellent', emoji: '😄', color: '#27ae60' },
+  { value: 1, label: "Very Bad", emoji: "😭", color: "#e74c3c" },
+  { value: 2, label: "Bad", emoji: "😢", color: "#f39c12" },
+  { value: 3, label: "Okay", emoji: "😐", color: "#f1c40f" },
+  { value: 4, label: "Good", emoji: "😊", color: "#2ecc71" },
+  { value: 5, label: "Excellent", emoji: "😄", color: "#27ae60" },
 ];
 
 export default function CheckinScreen() {
@@ -32,11 +32,11 @@ export default function CheckinScreen() {
         <View style={styles.header}>
           <Text style={styles.title}>Daily Check-in</Text>
           <Text style={styles.subtitle}>
-            {new Date().toLocaleDateString('en-US', { 
-              weekday: 'long', 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric' 
+            {new Date().toLocaleDateString("en-US", {
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric",
             })}
           </Text>
         </View>
@@ -48,49 +48,49 @@ export default function CheckinScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: "#f8f9fa",
   },
   scrollContent: {
     padding: 20,
     paddingBottom: 40,
   },
   header: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 32,
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#2c3e50',
+    fontWeight: "bold",
+    color: "#2c3e50",
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#7f8c8d',
+    color: "#7f8c8d",
   },
   section: {
     marginBottom: 32,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#2c3e50',
+    fontWeight: "600",
+    color: "#2c3e50",
     marginBottom: 16,
   },
   moodContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
     gap: 8,
   },
   moodButton: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderRadius: 12,
     padding: 12,
-    alignItems: 'center',
+    alignItems: "center",
     minWidth: 60,
     borderWidth: 2,
-    borderColor: '#e1e8ed',
+    borderColor: "#e1e8ed",
   },
   moodEmoji: {
     fontSize: 24,
@@ -98,93 +98,93 @@ const styles = StyleSheet.create({
   },
   moodLabel: {
     fontSize: 12,
-    color: '#7f8c8d',
-    textAlign: 'center',
+    color: "#7f8c8d",
+    textAlign: "center",
   },
   moodLabelSelected: {
-    color: '#ffffff',
-    fontWeight: '600',
+    color: "#ffffff",
+    fontWeight: "600",
   },
   sleepInput: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderWidth: 1,
-    borderColor: '#e1e8ed',
+    borderColor: "#e1e8ed",
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
   },
   stressContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
     gap: 8,
   },
   stressButton: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderWidth: 1,
-    borderColor: '#e1e8ed',
+    borderColor: "#e1e8ed",
     borderRadius: 8,
     width: 32,
     height: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   stressButtonSelected: {
-    backgroundColor: '#3498db',
-    borderColor: '#3498db',
+    backgroundColor: "#3498db",
+    borderColor: "#3498db",
   },
   stressText: {
     fontSize: 14,
-    color: '#7f8c8d',
+    color: "#7f8c8d",
   },
   stressTextSelected: {
-    color: '#ffffff',
-    fontWeight: '600',
+    color: "#ffffff",
+    fontWeight: "600",
   },
   activitiesContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
   },
   activityButton: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderWidth: 1,
-    borderColor: '#e1e8ed',
+    borderColor: "#e1e8ed",
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
   activityButtonSelected: {
-    backgroundColor: '#27ae60',
-    borderColor: '#27ae60',
+    backgroundColor: "#27ae60",
+    borderColor: "#27ae60",
   },
   activityText: {
     fontSize: 14,
-    color: '#7f8c8d',
+    color: "#7f8c8d",
   },
   activityTextSelected: {
-    color: '#ffffff',
-    fontWeight: '600',
+    color: "#ffffff",
+    fontWeight: "600",
   },
   notesInput: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderWidth: 1,
-    borderColor: '#e1e8ed',
+    borderColor: "#e1e8ed",
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
     minHeight: 100,
   },
   submitButton: {
-    backgroundColor: '#3498db',
+    backgroundColor: "#3498db",
     borderRadius: 12,
     padding: 16,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 16,
   },
   submitButtonText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });

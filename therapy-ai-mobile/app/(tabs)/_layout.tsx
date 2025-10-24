@@ -6,17 +6,18 @@ export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerShown: false,          // boolean
-        tabBarShowLabel: true,       // boolean
-        lazy: true,                  // boolean
+        headerShown: false,
+        tabBarShowLabel: true,
+        lazy: true,
       }}
     >
       <Tabs.Screen
         name="dashboard/index"
         options={{
           title: "Dashboard",
+          tabBarLabel: "Dashboard",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="analytics-outline" size={Number(size)} color={String(color)} />
+            <Ionicons name="analytics-outline" size={size} color={color} />
           ),
         }}
       />
@@ -24,8 +25,9 @@ export default function TabsLayout() {
         name="chat"
         options={{
           title: "Chat",
+          tabBarLabel: "Chat",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="chatbubbles-outline" size={Number(size)} color={String(color)} />
+            <Ionicons name="chatbubble-outline" size={size} color={color} />
           ),
         }}
       />
@@ -33,8 +35,9 @@ export default function TabsLayout() {
         name="checkin/index"
         options={{
           title: "Check-in",
+          tabBarLabel: "Check-in",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="calendar-outline" size={Number(size)} color={String(color)} />
+            <Ionicons name="heart-outline" size={size} color={color} />
           ),
         }}
       />
@@ -42,8 +45,9 @@ export default function TabsLayout() {
         name="settings/index"
         options={{
           title: "Settings",
+          tabBarLabel: "Settings",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings-outline" size={Number(size)} color={String(color)} />
+            <Ionicons name="settings-outline" size={size} color={color} />
           ),
         }}
       />
