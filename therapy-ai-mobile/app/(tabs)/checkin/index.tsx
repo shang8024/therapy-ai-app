@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -9,6 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import EmojiPicker from '../../../components/EmojiPicker';
 
 interface MoodLevel {
   value: number;
@@ -26,6 +27,29 @@ const moodLevels: MoodLevel[] = [
 ];
 
 export default function CheckinScreen() {
+  const [selectedMood, setSelectedMood] = useState<number | null>(null);
+  const [notes, setNotes] = useState('');
+
+  const handleSubmit = () => {
+    if (selectedMood === null) {
+      Alert.alert('Missing Information', 'Please select your mood level.');
+      return;
+    }
+
+    const checkinData = {
+      mood: selectedMood,
+      notes,
+      timestamp: new Date().toISOString(),
+    };
+
+    console.log('Check-in data:', checkinData);
+    Alert.alert(
+      'Check-in Complete',
+      'Thank you for sharing your status. This information helps us understand your patterns better.',
+      [{ text: 'OK', onPress: () => {/* Navigate back or reset form */} }]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -40,6 +64,33 @@ export default function CheckinScreen() {
             })}
           </Text>
         </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>How are you feeling today?</Text>
+          <EmojiPicker 
+            title="How are you feeling today?"
+            options={moodLevels}
+            selectedValue={selectedMood}
+            onChange={setSelectedMood}
+          />
+        </View>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Additional notes</Text>
+          <TextInput
+            style={styles.notesInput}
+            value={notes}
+            onChangeText={setNotes}
+            placeholder="How was your day? Any thoughts or feelings you'd like to share?"
+            multiline
+            numberOfLines={4}
+            textAlignVertical="top"
+            maxLength={500}
+          />
+        </View>
+
+        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+          <Text style={styles.submitButtonText}>Complete Check-in</Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
