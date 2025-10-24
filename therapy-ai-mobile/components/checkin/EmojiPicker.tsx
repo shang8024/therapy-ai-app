@@ -1,16 +1,15 @@
 // EmojiPicker.tsx
-import React from 'react';
+import React from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   FlatList,
-  FlatListProps,
   NativeScrollEvent,
   NativeSyntheticEvent,
   LayoutChangeEvent,
-} from 'react-native';
+} from "react-native";
 import Animated, {
   Extrapolation,
   interpolate,
@@ -18,34 +17,33 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   SharedValue,
-} from 'react-native-reanimated';
-
-export interface MoodLevel {
-  value: number;
-  label: string;
-  emoji: string;
-  color: string;
-}
+  withSpring,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
+import Svg, { Defs, RadialGradient as SvgRadialGradient, Stop, Circle } from "react-native-svg";
+import { MoodLevel } from "@/types/checkin";
 
 interface EmojiPickerProps {
-  title: string;
   options: MoodLevel[];
   selectedValue: number | null;
   onChange: (value: number) => void;
 }
 
-const ITEM_WIDTH = 86;
-const SPACING = 12;
+const ITEM_WIDTH = 120;
+const SPACING = 18;
 const SNAP = ITEM_WIDTH + SPACING;
 
-// —— 子组件：单个表情卡 —— //
+const GLOW_SIZE = 108;
+
 type AnimatedMoodItemProps = {
   item: MoodLevel;
   index: number;
   selected: boolean;
   onPress: (index: number) => void;
   sidePad: SharedValue<number>;
-  layoutW: number; 
+  layoutW: number;
   scrollX: SharedValue<number>;
 };
 
@@ -58,25 +56,42 @@ const AnimatedMoodItem: React.FC<AnimatedMoodItemProps> = ({
   layoutW,
   scrollX,
 }) => {
+  const bump = useSharedValue(1);
+
+  React.useEffect(() => {
+    if (selected) {
+      bump.value = withSequence(
+        withSpring(1.08, { mass: 0.6, damping: 10, stiffness: 220 }),
+        withSpring(1.0,  { mass: 0.6, damping: 12, stiffness: 220 })
+      );
+    } else {
+      bump.value = withTiming(1, { duration: 30 });
+    }
+  }, [selected]);
+
   const rStyle = useAnimatedStyle(() => {
     const itemCenter = sidePad.value + index * SNAP + ITEM_WIDTH / 2;
     const viewportCenter = scrollX.value + layoutW / 2;
     const dist = Math.abs(itemCenter - viewportCenter);
 
-    const scale = interpolate(
+    const baseScale = interpolate(
       dist,
       [0, ITEM_WIDTH, ITEM_WIDTH * 2],
-      [1.08, 1.0, 0.94],
-      Extrapolation.CLAMP
-    );
-    const opacity = interpolate(
-      dist,
-      [0, ITEM_WIDTH * 0.5, ITEM_WIDTH * 2],
-      [1.0, 0.85, 0.6],
+      [1.30, 1.00, 0.88],
       Extrapolation.CLAMP
     );
 
-    return { transform: [{ scale }], opacity };
+    const opacity = interpolate(
+      dist,
+      [0, ITEM_WIDTH * 0.75, ITEM_WIDTH * 2],
+      [1.0, 0.6, 0.25],
+      Extrapolation.CLAMP
+    );
+
+    return {
+      transform: [{ scale: baseScale * bump.value }],
+      opacity,
+    };
   }, [layoutW]);
 
   return (
@@ -86,17 +101,43 @@ const AnimatedMoodItem: React.FC<AnimatedMoodItemProps> = ({
         onPress={() => onPress(index)}
         accessibilityRole="button"
         accessibilityState={{ selected }}
-        style={[
-          styles.moodCard,
-          selected && {
-            backgroundColor: item.color,
-            borderColor: item.color,
-            shadowOpacity: 0.18,
-          },
-        ]}
+        style={styles.itemContainer}
       >
-        <Text style={[styles.moodEmoji, selected && { color: '#fff' }]}>{item.emoji}</Text>
-        <Text numberOfLines={1} style={[styles.moodLabel, selected && styles.moodLabelSelected]}>
+        <View style={styles.emojiWrap}>
+          {selected && (
+            <Svg
+              width={GLOW_SIZE}
+              height={GLOW_SIZE}
+              viewBox={`0 0 ${GLOW_SIZE} ${GLOW_SIZE}`}
+              style={StyleSheet.absoluteFillObject as any}
+              pointerEvents="none"
+            >
+              <Defs>
+                <SvgRadialGradient
+                  id={`glow-${item.value}`}
+                  cx="50%"
+                  cy="50%"
+                  r="50%"
+                >
+                  <Stop offset="0%"   stopColor={item.color} stopOpacity={0.7} />
+                  <Stop offset="50%"  stopColor={item.color} stopOpacity={0.15} />
+                  <Stop offset="100%" stopColor={item.color} stopOpacity={0.0} />
+                </SvgRadialGradient>
+              </Defs>
+              <Circle
+                cx={GLOW_SIZE / 2}
+                cy={GLOW_SIZE / 2}
+                r={GLOW_SIZE / 2}
+                fill={`url(#glow-${item.value})`}
+              />
+            </Svg>
+          )}
+          <Text style={styles.moodEmoji}>{item.emoji}</Text>
+        </View>
+        <Text
+          numberOfLines={1}
+          style={[styles.moodLabel, selected && { color: item.color, fontWeight: "700" }]}
+        >
           {item.label}
         </Text>
       </TouchableOpacity>
@@ -104,9 +145,7 @@ const AnimatedMoodItem: React.FC<AnimatedMoodItemProps> = ({
   );
 };
 
-// —— 主组件 —— //
 const EmojiPicker: React.FC<EmojiPickerProps> = ({
-  title,
   options,
   selectedValue,
   onChange,
@@ -117,11 +156,12 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({
   const sidePad = useSharedValue(0);
   const [layoutW, setLayoutW] = React.useState(0);
 
+  const defaultIndex = Math.floor(options.length / 2);
   const selectedIndex = React.useMemo(() => {
-    if (selectedValue == null) return 0;
+    if (selectedValue == null) return defaultIndex;
     const idx = options.findIndex((o) => o.value === selectedValue);
-    return idx < 0 ? 0 : idx;
-  }, [selectedValue, options]);
+    return idx < 0 ? defaultIndex : idx;
+  }, [selectedValue, options, defaultIndex]);
 
   const onLayout = (e: LayoutChangeEvent) => {
     const w = e.nativeEvent.layout.width;
@@ -138,15 +178,21 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({
     },
   });
 
-  const onMomentumEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+  const onMomentumEnd = async (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const x = e.nativeEvent.contentOffset.x;
     const index = Math.max(0, Math.min(options.length - 1, Math.round(x / SNAP)));
-    if (index !== selectedIndex) onChange(options[index].value);
+    if (index !== selectedIndex) {
+      onChange(options[index].value);
+      try { await Haptics.selectionAsync(); } catch {}
+    }
   };
 
-  const handlePress = (index: number) => {
+  const handlePress = async (index: number) => {
     listRef.current?.scrollToIndex?.({ index, animated: true });
-    if (index !== selectedIndex) onChange(options[index].value);
+    if (index !== selectedIndex) {
+      onChange(options[index].value);
+      try { await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
+    }
   };
 
   return (
@@ -159,8 +205,9 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{
           paddingHorizontal: Math.max((layoutW - ITEM_WIDTH) / 2, 0),
-          paddingVertical: 4,
+          paddingVertical: 6,
         }}
+        ItemSeparatorComponent={() => <View style={{ width: SPACING }} />}
         snapToInterval={SNAP}
         decelerationRate="fast"
         bounces={false}
@@ -173,7 +220,6 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({
           offset: SNAP * index,
           index,
         })}
-        ItemSeparatorComponent={() => <View style={{ width: SPACING }} />}
         renderItem={({ item, index }) => (
           <AnimatedMoodItem
             item={item}
@@ -193,31 +239,23 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({
 export default EmojiPicker;
 
 const styles = StyleSheet.create({
-  moodCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#e1e8ed',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 2,
+  itemContainer: {
+    paddingVertical: 25,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emojiWrap: {
+    width: GLOW_SIZE,
+    height: GLOW_SIZE,
+    alignItems: "center",
+    justifyContent: "center",
   },
   moodEmoji: {
-    fontSize: 30,
-    marginBottom: 6,
+    fontSize: 80,
   },
   moodLabel: {
-    fontSize: 12,
-    color: '#7f8c8d',
-    textAlign: 'center',
-  },
-  moodLabelSelected: {
-    color: '#ffffff',
-    fontWeight: '600',
+    fontSize: 20,
+    color: "#5f6e77",
+    textAlign: "center",
   },
 });
