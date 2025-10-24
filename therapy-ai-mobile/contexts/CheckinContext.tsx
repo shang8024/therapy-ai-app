@@ -1,5 +1,12 @@
 // context/CheckinContext.tsx
-import React, { createContext, useCallback, useEffect, useMemo, useState, useContext } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useContext,
+} from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { CheckinRecord } from "../types/checkin";
 import { makeCheckinKey, DEFAULT_MOOD_VALUE } from "../constants/checkin";
@@ -105,12 +112,24 @@ export const CheckinProvider: React.FC<Props> = ({ children }) => {
       cancelEdit,
       save,
     }),
-    [date, key, record, draft, loading, isEditing, loadToday, startEdit, cancelEdit, save]
+    [
+      date,
+      key,
+      record,
+      draft,
+      loading,
+      isEditing,
+      loadToday,
+      startEdit,
+      cancelEdit,
+      save,
+    ],
   );
 
-  return <CheckinContext.Provider value={value}>{children}</CheckinContext.Provider>;
+  return (
+    <CheckinContext.Provider value={value}>{children}</CheckinContext.Provider>
+  );
 };
-
 
 export function useCheckin() {
   const ctx = useContext(CheckinContext);

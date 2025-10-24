@@ -1,5 +1,12 @@
 import React from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+} from "react-native";
 import EmojiPicker from "./EmojiPicker";
 import { MOOD_LEVELS } from "@/constants/checkin";
 import { useCheckin } from "@/contexts/CheckinContext";
@@ -46,11 +53,17 @@ const CheckinForm: React.FC = () => {
       </View>
 
       <View style={{ flexDirection: "row", gap: 12 }}>
-        <TouchableOpacity style={[styles.submitButton, { flex: 1 }]} onPress={handleSave}>
+        <TouchableOpacity
+          style={[styles.submitButton, { flex: 1 }]}
+          onPress={handleSave}
+        >
           <Text style={styles.submitButtonText}>Save</Text>
         </TouchableOpacity>
         {record && (
-          <TouchableOpacity style={[styles.cancelButton, { flex: 0.5 }]} onPress={cancelEdit}>
+          <TouchableOpacity
+            style={[styles.cancelButton, { flex: 0.5 }]}
+            onPress={cancelEdit}
+          >
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
         )}
@@ -63,7 +76,12 @@ export default CheckinForm;
 
 const styles = StyleSheet.create({
   section: { marginBottom: 24 },
-  sectionTitle: { fontSize: 18, fontWeight: "600", color: "#2c3e50", marginBottom: 12 },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#2c3e50",
+    marginBottom: 12,
+  },
   notesInput: {
     backgroundColor: "#ffffff",
     borderWidth: 1,

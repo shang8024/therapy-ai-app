@@ -8,7 +8,7 @@ const CheckinRecord: React.FC = () => {
 
   const moodInfo = useMemo(
     () => MOOD_LEVELS.find((m) => m.value === record?.mood),
-    [record?.mood]
+    [record?.mood],
   );
 
   return (
@@ -24,7 +24,10 @@ const CheckinRecord: React.FC = () => {
         <View
           style={[
             styles.moodBadge,
-            { borderColor: moodInfo?.color ?? "#e1e8ed", backgroundColor: "#fff" },
+            {
+              borderColor: moodInfo?.color ?? "#e1e8ed",
+              backgroundColor: "#fff",
+            },
           ]}
         >
           <Text style={styles.moodEmojiReadonly}>{moodInfo?.emoji ?? "—"}</Text>
@@ -63,7 +66,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#eef6ff",
   },
   changeBtnText: { color: "#1d72e8", fontSize: 13, fontWeight: "600" },
-  moodRow: { marginTop: 8, flexDirection: "row", gap: 12, alignItems: "center" },
+  moodRow: {
+    marginTop: 8,
+    flexDirection: "row",
+    gap: 12,
+    alignItems: "center",
+  },
   moodBadge: {
     borderWidth: 2,
     borderRadius: 14,
@@ -74,5 +82,10 @@ const styles = StyleSheet.create({
   },
   moodEmojiReadonly: { fontSize: 30, marginBottom: 4 },
   moodLabelReadonly: { fontSize: 12, color: "#7f8c8d", fontWeight: "600" },
-  notesReadonly: { marginTop: 6, fontSize: 15, color: "#34495e", lineHeight: 21 },
+  notesReadonly: {
+    marginTop: 6,
+    fontSize: 15,
+    color: "#34495e",
+    lineHeight: 21,
+  },
 });

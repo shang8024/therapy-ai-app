@@ -1,14 +1,14 @@
 // context/AppProviders.tsx
-import React from 'react';
+import React from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { CheckinProvider } from './CheckinContext';
+import { CheckinProvider } from "./CheckinContext";
 
-export const AppProviders: React.FC<React.PropsWithChildren> = ({ children }) => {
+export const AppProviders: React.FC<React.PropsWithChildren> = ({
+  children,
+}) => {
   return (
     <SafeAreaProvider>
-      <CheckinProvider>
-        {children}
-      </CheckinProvider>
+      <CheckinProvider>{children}</CheckinProvider>
     </SafeAreaProvider>
   );
 };
