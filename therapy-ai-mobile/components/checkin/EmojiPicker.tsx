@@ -22,7 +22,12 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
-import Svg, { Defs, RadialGradient as SvgRadialGradient, Stop, Circle } from "react-native-svg";
+import Svg, {
+  Defs,
+  RadialGradient as SvgRadialGradient,
+  Stop,
+  Circle,
+} from "react-native-svg";
 import { MoodLevel } from "@/types/checkin";
 
 interface EmojiPickerProps {
@@ -62,12 +67,12 @@ const AnimatedMoodItem: React.FC<AnimatedMoodItemProps> = ({
     if (selected) {
       bump.value = withSequence(
         withSpring(1.08, { mass: 0.6, damping: 10, stiffness: 220 }),
-        withSpring(1.0,  { mass: 0.6, damping: 12, stiffness: 220 })
+        withSpring(1.0, { mass: 0.6, damping: 12, stiffness: 220 })
       );
     } else {
       bump.value = withTiming(1, { duration: 30 });
     }
-  }, [selected]);
+  }, [selected, bump]);
 
   const rStyle = useAnimatedStyle(() => {
     const itemCenter = sidePad.value + index * SNAP + ITEM_WIDTH / 2;
@@ -77,7 +82,7 @@ const AnimatedMoodItem: React.FC<AnimatedMoodItemProps> = ({
     const baseScale = interpolate(
       dist,
       [0, ITEM_WIDTH, ITEM_WIDTH * 2],
-      [1.30, 1.00, 0.88],
+      [1.3, 1.0, 0.88],
       Extrapolation.CLAMP
     );
 
@@ -119,9 +124,17 @@ const AnimatedMoodItem: React.FC<AnimatedMoodItemProps> = ({
                   cy="50%"
                   r="50%"
                 >
-                  <Stop offset="0%"   stopColor={item.color} stopOpacity={0.7} />
-                  <Stop offset="50%"  stopColor={item.color} stopOpacity={0.15} />
-                  <Stop offset="100%" stopColor={item.color} stopOpacity={0.0} />
+                  <Stop offset="0%" stopColor={item.color} stopOpacity={0.7} />
+                  <Stop
+                    offset="50%"
+                    stopColor={item.color}
+                    stopOpacity={0.15}
+                  />
+                  <Stop
+                    offset="100%"
+                    stopColor={item.color}
+                    stopOpacity={0.0}
+                  />
                 </SvgRadialGradient>
               </Defs>
               <Circle
@@ -136,7 +149,10 @@ const AnimatedMoodItem: React.FC<AnimatedMoodItemProps> = ({
         </View>
         <Text
           numberOfLines={1}
-          style={[styles.moodLabel, selected && { color: item.color, fontWeight: "700" }]}
+          style={[
+            styles.moodLabel,
+            selected && { color: item.color, fontWeight: "700" },
+          ]}
         >
           {item.label}
         </Text>
@@ -168,7 +184,10 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({
     setLayoutW(w);
     sidePad.value = Math.max((w - ITEM_WIDTH) / 2, 0);
     requestAnimationFrame(() => {
-      listRef.current?.scrollToIndex?.({ index: selectedIndex, animated: false });
+      listRef.current?.scrollToIndex?.({
+        index: selectedIndex,
+        animated: false,
+      });
     });
   };
 
@@ -180,10 +199,15 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({
 
   const onMomentumEnd = async (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const x = e.nativeEvent.contentOffset.x;
-    const index = Math.max(0, Math.min(options.length - 1, Math.round(x / SNAP)));
+    const index = Math.max(
+      0,
+      Math.min(options.length - 1, Math.round(x / SNAP))
+    );
     if (index !== selectedIndex) {
       onChange(options[index].value);
-      try { await Haptics.selectionAsync(); } catch {}
+      try {
+        await Haptics.selectionAsync();
+      } catch {}
     }
   };
 
@@ -191,7 +215,9 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({
     listRef.current?.scrollToIndex?.({ index, animated: true });
     if (index !== selectedIndex) {
       onChange(options[index].value);
-      try { await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
+      try {
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      } catch {}
     }
   };
 

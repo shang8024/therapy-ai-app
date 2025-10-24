@@ -3,15 +3,15 @@ import { MoodLevel } from "@/types/checkin";
 
 /** Canonical mood options for the app */
 export const MOOD_LEVELS: MoodLevel[] = [
-  { value: 1, label: "Very Bad",  emoji: "😭", color: "#e74c3c" },
-  { value: 2, label: "Bad",       emoji: "😢", color: "#f39c12" },
-  { value: 3, label: "Okay",      emoji: "😐", color: "#f1c40f" },
-  { value: 4, label: "Good",      emoji: "😊", color: "#2ecc71" },
+  { value: 1, label: "Very Bad", emoji: "😭", color: "#e74c3c" },
+  { value: 2, label: "Bad", emoji: "😢", color: "#f39c12" },
+  { value: 3, label: "Okay", emoji: "😐", color: "#f1c40f" },
+  { value: 4, label: "Good", emoji: "😊", color: "#2ecc71" },
   { value: 5, label: "Excellent", emoji: "😄", color: "#27ae60" },
 ];
 export const DEFAULT_MOOD_VALUE =
   MOOD_LEVELS[Math.floor(MOOD_LEVELS.length / 2)].value;
-  
+
 /** Prefix for daily check-in storage keys */
 export const CHECKIN_KEY_PREFIX = "CHECKIN:";
 
