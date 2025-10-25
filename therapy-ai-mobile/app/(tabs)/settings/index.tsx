@@ -1,3 +1,4 @@
+import Disclaimer from "@/components/legal/Disclaimer";
 import React, { useState } from "react";
 import {
   Text,
@@ -7,8 +8,11 @@ import {
   Switch,
   StyleSheet,
   Alert,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as WebBrowser from "expo-web-browser";
+import { TOS_URL, PRIVACY_URL } from "@/constants/legal";
 
 interface SettingItemProps {
   title: string;
@@ -53,6 +57,20 @@ const SettingSection: React.FC<{
   </View>
 );
 
+const openUrl = async (url: string) => {
+  try {
+    await WebBrowser.openBrowserAsync(url, {
+      readerMode: false,
+      enableBarCollapsing: true,
+      showTitle: true,
+    });
+  } catch {
+    const ok = await Linking.canOpenURL(url);
+    if (ok) await Linking.openURL(url);
+    else Alert.alert("Unable to open link", url);
+  }
+};
+
 export default function SettingsScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [darkModeEnabled, setDarkModeEnabled] = useState(false);
@@ -66,7 +84,7 @@ export default function SettingsScreen() {
         "• SAMHSA National Helpline: 1-800-662-4357\n" +
         "• Crisis Chat: suicidepreventionlifeline.org\n\n" +
         "If you're in immediate danger, please call 911 or go to your nearest emergency room.",
-      [{ text: "OK", style: "default" }]
+      [{ text: "OK", style: "default" },]
     );
   };
 
@@ -77,7 +95,10 @@ export default function SettingsScreen() {
         "This app provides supportive conversations and mental health resources. " +
         "It is not a replacement for professional mental health care.\n\n" +
         "Always consult with a qualified mental health professional for serious concerns.",
-      [{ text: "OK", style: "default" }]
+      [ { text: "OK", style: "default" },
+        { text: "Terms of Service", onPress: () => openUrl(TOS_URL) },
+        { text: "Privacy Policy", onPress: () => openUrl(PRIVACY_URL) },
+      ]
     );
   };
 
@@ -87,7 +108,10 @@ export default function SettingsScreen() {
       "Your conversations are stored locally on your device and are not shared with third parties. " +
         "We are committed to protecting your privacy and maintaining the confidentiality of your data.\n\n" +
         "For more information, visit our full privacy policy.",
-      [{ text: "OK", style: "default" }]
+      [ { text: "OK", style: "default" },
+        { text: "Terms of Service", onPress: () => openUrl(TOS_URL) },
+        { text: "Privacy Policy", onPress: () => openUrl(PRIVACY_URL) },
+      ]
     );
   };
 
@@ -203,13 +227,7 @@ export default function SettingsScreen() {
           />
         </SettingSection>
 
-        <View style={styles.disclaimer}>
-          <Text style={styles.disclaimerText}>
-            ⚠️ Important: This app is not a substitute for professional mental
-            health care. If you're experiencing a mental health emergency,
-            please contact emergency services or a crisis hotline immediately.
-          </Text>
-        </View>
+        <Disclaimer />
       </ScrollView>
     </SafeAreaView>
   );
@@ -287,18 +305,5 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: "#c0c0c0",
     marginLeft: 8,
-  },
-  disclaimer: {
-    margin: 20,
-    padding: 16,
-    backgroundColor: "#fff3cd",
-    borderRadius: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: "#ffc107",
-  },
-  disclaimerText: {
-    fontSize: 14,
-    color: "#856404",
-    lineHeight: 20,
   },
 });

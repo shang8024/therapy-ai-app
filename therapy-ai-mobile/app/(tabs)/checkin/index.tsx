@@ -12,21 +12,13 @@ import { useCheckin } from "@/contexts/CheckinContext";
 
 import CheckinRecord from "@/components/checkin/CheckInRecord";
 import CheckinForm from "@/components/checkin/CheckInForm";
+import LoadingScreen from "@/components/LoadingScreen";
 
 export default function CheckinScreen() {
   const { date, loading, isEditing, record } = useCheckin();
 
   if (loading) {
-    return (
-      <SafeAreaView
-        style={[
-          styles.container,
-          { justifyContent: "center", alignItems: "center" },
-        ]}
-      >
-        <ActivityIndicator />
-      </SafeAreaView>
-    );
+    return <LoadingScreen />;
   }
 
   return (
