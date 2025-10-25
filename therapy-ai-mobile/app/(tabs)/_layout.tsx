@@ -32,7 +32,7 @@ export default function TabsLayout() {
           tabBarLabel: "Chat",
           tabBarIcon: ({ color, size }) => (
             <Ionicons
-              name="chatbubbles-outline"
+              name="chatbubble-outline"
               size={Number(size)}
               color={String(color)}
             />
@@ -46,7 +46,7 @@ export default function TabsLayout() {
           tabBarLabel: "Check-in",
           tabBarIcon: ({ color, size }) => (
             <Ionicons
-              name="calendar-outline"
+              name="heart-outline"
               size={Number(size)}
               color={String(color)}
             />
