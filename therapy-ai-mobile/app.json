@@ -14,7 +14,10 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSUserNotificationUsageDescription": "We use notifications to remind you to do your daily check-in."
+      }
     },
     "android": {
       "adaptiveIcon": {

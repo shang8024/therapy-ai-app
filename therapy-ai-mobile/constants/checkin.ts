@@ -25,10 +25,12 @@ export function makeCheckinKey(date: Date = new Date()): string {
 
 /** Pretty date string used in UI (kept here so UI is consistent everywhere) */
 export function prettyDate(date: Date = new Date()): string {
-  return date.toLocaleDateString("en-US", {
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return date.toLocaleDateString(undefined, {
     weekday: "long",
     year: "numeric",
     month: "long",
     day: "numeric",
+    timeZone,
   });
 }

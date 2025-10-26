@@ -1,14 +1,38 @@
 // app/(tabs)/_layout.tsx
-import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import React from "react";
+import { Tabs, router } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { LEGAL_ACCEPT_KEY } from "@/constants/legal";
+import LoadingScreen from "@/components/LoadingScreen";
 
-export default function TabsLayout() {
+export default function ProtectedTabsLayout() {
+  const [ready, setReady] = React.useState(false);
+  const [accepted, setAccepted] = React.useState<boolean | null>(null);
+
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const v = await AsyncStorage.getItem(LEGAL_ACCEPT_KEY);
+        setAccepted(v === "true");
+      } finally {
+        setReady(true);
+      }
+    })();
+  }, []);
+
+  React.useEffect(() => {
+    if (!ready) return;
+    if (!accepted) router.replace("/legal");
+  }, [ready, accepted]);
+
+  if (!ready) return <LoadingScreen />;
   return (
     <Tabs
       screenOptions={{
-        headerShown: false, // boolean
-        tabBarShowLabel: true, // boolean
-        lazy: true, // boolean
+        headerShown: false,
+        tabBarShowLabel: true,
+        lazy: true,
       }}
     >
       <Tabs.Screen
@@ -32,7 +56,7 @@ export default function TabsLayout() {
           tabBarLabel: "Chat",
           tabBarIcon: ({ color, size }) => (
             <Ionicons
-              name="chatbubbles-outline"
+              name="chatbubble-outline"
               size={Number(size)}
               color={String(color)}
             />
@@ -46,7 +70,7 @@ export default function TabsLayout() {
           tabBarLabel: "Check-in",
           tabBarIcon: ({ color, size }) => (
             <Ionicons
-              name="calendar-outline"
+              name="heart-outline"
               size={Number(size)}
               color={String(color)}
             />

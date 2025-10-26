@@ -1,32 +1,18 @@
 import React from "react";
-import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { prettyDate } from "@/constants/checkin";
 import { useCheckin } from "@/contexts/CheckinContext";
 
 import CheckinRecord from "@/components/checkin/CheckInRecord";
 import CheckinForm from "@/components/checkin/CheckInForm";
+import LoadingScreen from "@/components/LoadingScreen";
 
 export default function CheckinScreen() {
   const { date, loading, isEditing, record } = useCheckin();
 
   if (loading) {
-    return (
-      <SafeAreaView
-        style={[
-          styles.container,
-          { justifyContent: "center", alignItems: "center" },
-        ]}
-      >
-        <ActivityIndicator />
-      </SafeAreaView>
-    );
+    return <LoadingScreen />;
   }
 
   return (

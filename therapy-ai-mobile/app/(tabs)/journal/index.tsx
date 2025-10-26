@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,18 +10,18 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { database, JournalEntry } from '../../../utils/database';
-import { useDatabase } from '../../../contexts/DatabaseContext';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { database, JournalEntry } from "../../../utils/database";
+import { useDatabase } from "../../../contexts/DatabaseContext";
 
 export default function JournalScreen() {
   const insets = useSafeAreaInsets();
   const { isInitialized, isLoading: dbLoading } = useDatabase();
   const [entries, setEntries] = useState<JournalEntry[]>([]);
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
 
@@ -33,14 +33,14 @@ export default function JournalScreen() {
 
   const loadEntries = async () => {
     if (!isInitialized) return;
-    
+
     try {
       setIsLoading(true);
       const journalEntries = await database.getAllJournalEntries();
       setEntries(journalEntries);
     } catch (error) {
-      console.error('Failed to load entries:', error);
-      Alert.alert('Error', 'Failed to load journal entries');
+      console.error("Failed to load entries:", error);
+      Alert.alert("Error", "Failed to load journal entries");
     } finally {
       setIsLoading(false);
     }
@@ -48,28 +48,32 @@ export default function JournalScreen() {
 
   const handleSave = async () => {
     if (!title.trim() || !content.trim()) {
-      Alert.alert('Error', 'Please enter both title and content');
+      Alert.alert("Error", "Please enter both title and content");
       return;
     }
 
     try {
       setIsLoading(true);
-      
+
       if (editingEntry) {
-        await database.updateJournalEntry(editingEntry.id, title.trim(), content.trim());
-        Alert.alert('Success', 'Journal entry updated successfully');
+        await database.updateJournalEntry(
+          editingEntry.id,
+          title.trim(),
+          content.trim(),
+        );
+        Alert.alert("Success", "Journal entry updated successfully");
       } else {
         await database.createJournalEntry(title.trim(), content.trim());
-        Alert.alert('Success', 'Journal entry saved successfully');
+        Alert.alert("Success", "Journal entry saved successfully");
       }
 
-      setTitle('');
-      setContent('');
+      setTitle("");
+      setContent("");
       setEditingEntry(null);
       await loadEntries();
     } catch (error) {
-      console.error('Failed to save entry:', error);
-      Alert.alert('Error', 'Failed to save journal entry');
+      console.error("Failed to save entry:", error);
+      Alert.alert("Error", "Failed to save journal entry");
     } finally {
       setIsLoading(false);
     }
@@ -83,42 +87,42 @@ export default function JournalScreen() {
 
   const handleDelete = (entry: JournalEntry) => {
     Alert.alert(
-      'Delete Entry',
-      'Are you sure you want to delete this journal entry?',
+      "Delete Entry",
+      "Are you sure you want to delete this journal entry?",
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: "Cancel", style: "cancel" },
         {
-          text: 'Delete',
-          style: 'destructive',
+          text: "Delete",
+          style: "destructive",
           onPress: async () => {
             try {
               await database.deleteJournalEntry(entry.id);
-              Alert.alert('Success', 'Journal entry deleted successfully');
+              Alert.alert("Success", "Journal entry deleted successfully");
               await loadEntries();
             } catch (error) {
-              console.error('Failed to delete entry:', error);
-              Alert.alert('Error', 'Failed to delete journal entry');
+              console.error("Failed to delete entry:", error);
+              Alert.alert("Error", "Failed to delete journal entry");
             }
           },
         },
-      ]
+      ],
     );
   };
 
   const handleCancel = () => {
-    setTitle('');
-    setContent('');
+    setTitle("");
+    setContent("");
     setEditingEntry(null);
   };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -164,12 +168,14 @@ export default function JournalScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
       >
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Journal</Text>
-          <Text style={styles.headerSubtitle}>Write your thoughts and feelings</Text>
+          <Text style={styles.headerSubtitle}>
+            Write your thoughts and feelings
+          </Text>
         </View>
 
         <View style={styles.inputSection}>
@@ -189,10 +195,13 @@ export default function JournalScreen() {
             textAlignVertical="top"
             maxLength={2000}
           />
-          
+
           <View style={styles.buttonContainer}>
             {editingEntry && (
-              <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={handleCancel}
+              >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
             )}
@@ -205,7 +214,7 @@ export default function JournalScreen() {
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <Text style={styles.saveButtonText}>
-                  {editingEntry ? 'Update' : 'Save'} Entry
+                  {editingEntry ? "Update" : "Save"} Entry
                 </Text>
               )}
             </TouchableOpacity>
@@ -214,8 +223,13 @@ export default function JournalScreen() {
 
         <View style={styles.entriesSection}>
           <View style={styles.entriesHeader}>
-            <Text style={styles.entriesTitle}>Your Entries ({entries.length})</Text>
-            <TouchableOpacity onPress={loadEntries} style={styles.refreshButton}>
+            <Text style={styles.entriesTitle}>
+              Your Entries ({entries.length})
+            </Text>
+            <TouchableOpacity
+              onPress={loadEntries}
+              style={styles.refreshButton}
+            >
               <Ionicons name="refresh" size={20} color="#007AFF" />
             </TouchableOpacity>
           </View>
@@ -225,7 +239,9 @@ export default function JournalScreen() {
               <Text style={styles.loadingText}>Loading entries...</Text>
             </View>
           ) : entries.length === 0 ? (
-            <Text style={styles.emptyText}>No journal entries yet. Start writing!</Text>
+            <Text style={styles.emptyText}>
+              No journal entries yet. Start writing!
+            </Text>
           ) : (
             <FlatList
               data={entries}
@@ -244,39 +260,39 @@ export default function JournalScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: "#F8F9FA",
   },
   keyboardView: {
     flex: 1,
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     gap: 16,
   },
   header: {
     padding: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E7',
+    borderBottomColor: "#E5E5E7",
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1C1C1E',
+    fontWeight: "bold",
+    color: "#1C1C1E",
     marginBottom: 4,
   },
   headerSubtitle: {
     fontSize: 16,
-    color: '#8E8E93',
+    color: "#8E8E93",
   },
   inputSection: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     margin: 16,
     padding: 16,
     borderRadius: 12,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -284,131 +300,131 @@ const styles = StyleSheet.create({
   },
   titleInput: {
     borderWidth: 1,
-    borderColor: '#E5E5E7',
+    borderColor: "#E5E5E7",
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
     marginBottom: 12,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: "#F8F9FA",
   },
   contentInput: {
     borderWidth: 1,
-    borderColor: '#E5E5E7',
+    borderColor: "#E5E5E7",
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
     height: 100,
     marginBottom: 16,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: "#F8F9FA",
   },
   buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
+    flexDirection: "row",
+    justifyContent: "flex-end",
     gap: 12,
   },
   saveButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: "#007AFF",
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   cancelButton: {
-    backgroundColor: '#8E8E93',
+    backgroundColor: "#8E8E93",
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
   },
   disabledButton: {
-    backgroundColor: '#C7C7CC',
+    backgroundColor: "#C7C7CC",
   },
   saveButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   cancelButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   entriesSection: {
     flex: 1,
     margin: 16,
   },
   entriesHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 12,
   },
   entriesTitle: {
     fontSize: 20,
-    fontWeight: '600',
-    color: '#1C1C1E',
+    fontWeight: "600",
+    color: "#1C1C1E",
   },
   refreshButton: {
     padding: 8,
     borderRadius: 6,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: "#F2F2F7",
   },
   entriesList: {
     paddingBottom: 20,
   },
   entryCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     padding: 16,
     marginBottom: 12,
     borderRadius: 12,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
   },
   entryHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 8,
   },
   entryTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#1C1C1E',
+    fontWeight: "600",
+    color: "#1C1C1E",
     flex: 1,
     marginRight: 12,
   },
   entryActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
   },
   actionButton: {
     padding: 8,
     borderRadius: 6,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: "#F2F2F7",
   },
   entryContent: {
     fontSize: 16,
-    color: '#3A3A3C',
+    color: "#3A3A3C",
     lineHeight: 22,
     marginBottom: 8,
   },
   entryDate: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: "#8E8E93",
   },
   loadingText: {
     fontSize: 16,
-    color: '#8E8E93',
+    color: "#8E8E93",
   },
   emptyText: {
-    textAlign: 'center',
+    textAlign: "center",
     fontSize: 16,
-    color: '#8E8E93',
+    color: "#8E8E93",
     marginTop: 40,
-    fontStyle: 'italic',
+    fontStyle: "italic",
   },
 });
