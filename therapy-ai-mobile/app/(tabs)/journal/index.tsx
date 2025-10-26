@@ -14,42 +14,22 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { database, JournalEntry } from '../../../utils/database';
-
-const MOOD_OPTIONS = [
-  { value: 1, emoji: '😢', label: 'Very Sad', color: '#FF3B30' },
-  { value: 2, emoji: '😔', label: 'Sad', color: '#FF9500' },
-  { value: 3, emoji: '😐', label: 'Neutral', color: '#FFCC00' },
-  { value: 4, emoji: '😊', label: 'Happy', color: '#34C759' },
-  { value: 5, emoji: '😄', label: 'Very Happy', color: '#007AFF' },
-];
+import { useDatabase } from '../../../contexts/DatabaseContext';
 
 export default function JournalScreen() {
   const insets = useSafeAreaInsets();
+  const { isInitialized, isLoading: dbLoading } = useDatabase();
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [mood, setMood] = useState(3);
   const [isLoading, setIsLoading] = useState(false);
   const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
-  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    initializeDatabase();
-  }, []);
-
-  const initializeDatabase = async () => {
-    try {
-      setIsLoading(true);
-      await database.init();
-      setIsInitialized(true);
-      await loadEntries();
-    } catch (error) {
-      console.error('Failed to initialize database:', error);
-      Alert.alert('Error', 'Failed to initialize database. Please restart the app.');
-    } finally {
-      setIsLoading(false);
+    if (isInitialized) {
+      loadEntries();
     }
-  };
+  }, [isInitialized]);
 
   const loadEntries = async () => {
     if (!isInitialized) return;
@@ -76,16 +56,15 @@ export default function JournalScreen() {
       setIsLoading(true);
       
       if (editingEntry) {
-        await database.updateJournalEntry(editingEntry.id, title.trim(), content.trim(), mood);
+        await database.updateJournalEntry(editingEntry.id, title.trim(), content.trim());
         Alert.alert('Success', 'Journal entry updated successfully');
       } else {
-        await database.createJournalEntry(title.trim(), content.trim(), mood);
+        await database.createJournalEntry(title.trim(), content.trim());
         Alert.alert('Success', 'Journal entry saved successfully');
       }
 
       setTitle('');
       setContent('');
-      setMood(3);
       setEditingEntry(null);
       await loadEntries();
     } catch (error) {
@@ -99,7 +78,6 @@ export default function JournalScreen() {
   const handleEdit = (entry: JournalEntry) => {
     setTitle(entry.title);
     setContent(entry.content);
-    setMood(entry.mood);
     setEditingEntry(entry);
   };
 
@@ -130,7 +108,6 @@ export default function JournalScreen() {
   const handleCancel = () => {
     setTitle('');
     setContent('');
-    setMood(3);
     setEditingEntry(null);
   };
 
@@ -146,8 +123,6 @@ export default function JournalScreen() {
   };
 
   const renderEntry = ({ item }: { item: JournalEntry }) => {
-    const moodOption = MOOD_OPTIONS.find(option => option.value === item.mood) || MOOD_OPTIONS[2];
-    
     return (
       <View style={styles.entryCard}>
         <View style={styles.entryHeader}>
@@ -167,9 +142,6 @@ export default function JournalScreen() {
             </TouchableOpacity>
           </View>
         </View>
-        <View style={styles.entryMoodContainer}>
-          <Text style={styles.entryMoodEmoji}>{moodOption.emoji}</Text>
-        </View>
         <Text style={styles.entryContent} numberOfLines={3}>
           {item.content}
         </Text>
@@ -178,7 +150,7 @@ export default function JournalScreen() {
     );
   };
 
-  if (!isInitialized) {
+  if (!isInitialized || dbLoading) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.loadingContainer}>
@@ -217,25 +189,6 @@ export default function JournalScreen() {
             textAlignVertical="top"
             maxLength={2000}
           />
-          
-          <View style={styles.moodSection}>
-            <Text style={styles.moodLabel}>How are you feeling?</Text>
-            <View style={styles.moodPicker}>
-              {MOOD_OPTIONS.map((option) => (
-                <TouchableOpacity
-                  key={option.value}
-                  style={[
-                    styles.moodOption,
-                    mood === option.value && styles.moodOptionSelected,
-                    { borderColor: option.color }
-                  ]}
-                  onPress={() => setMood(option.value)}
-                >
-                  <Text style={styles.moodEmoji}>{option.emoji}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
           
           <View style={styles.buttonContainer}>
             {editingEntry && (
@@ -457,48 +410,5 @@ const styles = StyleSheet.create({
     color: '#8E8E93',
     marginTop: 40,
     fontStyle: 'italic',
-  },
-  moodSection: {
-    marginBottom: 12,
-  },
-  moodLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1C1C1E',
-    marginBottom: 8,
-  },
-  moodPicker: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 6,
-  },
-  moodOption: {
-    flex: 1,
-    alignItems: 'center',
-    padding: 6,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: '#E5E5E7',
-    backgroundColor: '#F8F9FA',
-  },
-  moodOptionSelected: {
-    backgroundColor: '#F0F8FF',
-    borderWidth: 2,
-  },
-  moodEmoji: {
-    fontSize: 18,
-  },
-  entryMoodContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  entryMoodEmoji: {
-    fontSize: 16,
-  },
-  entryMoodLabel: {
-    fontSize: 12,
-    color: '#8E8E93',
-    fontWeight: '500',
   },
 });

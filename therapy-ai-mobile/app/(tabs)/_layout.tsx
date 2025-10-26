@@ -54,6 +54,20 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="journal/index"
+        options={{
+          title: "Journal",
+          tabBarLabel: "Journal",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons
+              name="book-outline"
+              size={Number(size)}
+              color={String(color)}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="settings/index"
         options={{
           title: "Settings",
