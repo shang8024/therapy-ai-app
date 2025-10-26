@@ -7,9 +7,10 @@ import React, {
   useState,
   useContext,
 } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { CheckinRecord } from "../types/checkin";
 import { makeCheckinKey, DEFAULT_MOOD_VALUE } from "../constants/checkin";
+import { database } from "../utils/database";
+import { useDatabase } from "./DatabaseContext";
 
 type Draft = {
   mood: number | null;
@@ -35,6 +36,7 @@ export const CheckinContext = createContext<CheckinContextValue | null>(null);
 type Props = { children: React.ReactNode };
 
 export const CheckinProvider: React.FC<Props> = ({ children }) => {
+  const { isInitialized, isLoading: dbLoading } = useDatabase();
   const [date] = useState<Date>(() => new Date());
   const key = useMemo(() => makeCheckinKey(date), [date]);
 
@@ -45,23 +47,36 @@ export const CheckinProvider: React.FC<Props> = ({ children }) => {
   const [isEditing, setIsEditing] = useState<boolean>(true);
 
   const loadToday = useCallback(async () => {
+    if (!isInitialized) return;
+    
     setLoading(true);
     try {
-      const raw = await AsyncStorage.getItem(key);
-      if (raw) {
-        const parsed: CheckinRecord = JSON.parse(raw);
-        setRecord(parsed);
-        setDraft({ mood: parsed.mood, notes: parsed.notes ?? "" });
+      const dateString = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+      const dbRecord = await database.getCheckinEntryByDate(dateString);
+      
+      if (dbRecord) {
+        const checkinRecord: CheckinRecord = {
+          mood: dbRecord.mood,
+          notes: dbRecord.notes || "",
+          timestamp: dbRecord.createdAt,
+        };
+        setRecord(checkinRecord);
+        setDraft({ mood: checkinRecord.mood, notes: checkinRecord.notes });
         setIsEditing(false);
       } else {
         setRecord(null);
         setDraft({ mood: DEFAULT_MOOD_VALUE, notes: "" });
         setIsEditing(true);
       }
+    } catch (error) {
+      console.error('Failed to load checkin data:', error);
+      setRecord(null);
+      setDraft({ mood: DEFAULT_MOOD_VALUE, notes: "" });
+      setIsEditing(true);
     } finally {
       setLoading(false);
     }
-  }, [key]);
+  }, [isInitialized, date]);
 
   useEffect(() => {
     loadToday();
@@ -88,15 +103,37 @@ export const CheckinProvider: React.FC<Props> = ({ children }) => {
     if (draft.mood == null) {
       throw new Error("Missing mood");
     }
+    
+    if (!isInitialized) {
+      throw new Error("Database not initialized");
+    }
+    
+    const dateString = date.toISOString().split('T')[0]; // YYYY-MM-DD format
     const payload: CheckinRecord = {
       mood: draft.mood,
       notes: draft.notes,
       timestamp: new Date().toISOString(),
     };
-    await AsyncStorage.setItem(key, JSON.stringify(payload));
-    setRecord(payload);
-    setIsEditing(false);
-  }, [draft, key]);
+    
+    try {
+      // Check if entry already exists for this date
+      const existingEntry = await database.getCheckinEntryByDate(dateString);
+      
+      if (existingEntry) {
+        // Update existing entry
+        await database.updateCheckinEntry(existingEntry.id, draft.mood, draft.notes);
+      } else {
+        // Create new entry
+        await database.createCheckinEntry(draft.mood, draft.notes, dateString);
+      }
+      
+      setRecord(payload);
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Failed to save checkin data:', error);
+      throw error;
+    }
+  }, [draft, isInitialized, date]);
 
   const value = useMemo<CheckinContextValue>(
     () => ({
@@ -105,7 +142,7 @@ export const CheckinProvider: React.FC<Props> = ({ children }) => {
       record,
       draft,
       setDraft,
-      loading,
+      loading: loading || dbLoading,
       isEditing,
       loadToday,
       startEdit,
@@ -118,6 +155,7 @@ export const CheckinProvider: React.FC<Props> = ({ children }) => {
       record,
       draft,
       loading,
+      dbLoading,
       isEditing,
       loadToday,
       startEdit,
