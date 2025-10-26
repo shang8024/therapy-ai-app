@@ -7,12 +7,22 @@ import {
   TouchableOpacity,
   Switch,
   StyleSheet,
-  Alert,
-  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import * as WebBrowser from "expo-web-browser";
-import { TOS_URL, PRIVACY_URL } from "@/constants/legal";
+import {
+  showCrisisResources,
+  showPrivacy,
+  showAbout,
+  showDataManagement,
+} from "@/lib/legal";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { NOTIF_PREF_KEY, NOTIF_SCHEDULED_KEY } from "@/constants/notifications";
+import {
+  cancelDailyReminders,
+  ensureDailyReminderSetup,
+  getOrRequestNotifPermission,
+} from "@/lib/notifications";
+import { Platform, Alert } from "react-native";
 
 interface SettingItemProps {
   title: string;
@@ -28,24 +38,23 @@ const SettingItem: React.FC<SettingItemProps> = ({
   onPress,
   rightComponent,
   showArrow = false,
-}) => (
-  <TouchableOpacity
-    style={styles.settingItem}
-    onPress={onPress}
-    disabled={!onPress}
-  >
-    <View style={styles.settingContent}>
-      <Text style={styles.settingTitle}>{title}</Text>
-      {description && (
-        <Text style={styles.settingDescription}>{description}</Text>
+}) => {
+  const Container: any = onPress ? TouchableOpacity : View;
+  return (
+    <Container style={styles.settingItem} onPress={onPress} disabled={!onPress}>
+      <View style={styles.settingContent}>
+        <Text style={styles.settingTitle}>{title}</Text>
+        {description && (
+          <Text style={styles.settingDescription}>{description}</Text>
+        )}
+      </View>
+      {rightComponent && (
+        <View style={styles.rightComponent}>{rightComponent}</View>
       )}
-    </View>
-    {rightComponent && (
-      <View style={styles.rightComponent}>{rightComponent}</View>
-    )}
-    {showArrow && <Text style={styles.arrow}>›</Text>}
-  </TouchableOpacity>
-);
+      {showArrow && <Text style={styles.arrow}>›</Text>}
+    </Container>
+  );
+};
 
 const SettingSection: React.FC<{
   title: string;
@@ -57,86 +66,68 @@ const SettingSection: React.FC<{
   </View>
 );
 
-const openUrl = async (url: string) => {
-  try {
-    await WebBrowser.openBrowserAsync(url, {
-      readerMode: false,
-      enableBarCollapsing: true,
-      showTitle: true,
-    });
-  } catch {
-    const ok = await Linking.canOpenURL(url);
-    if (ok) await Linking.openURL(url);
-    else Alert.alert("Unable to open link", url);
-  }
-};
-
 export default function SettingsScreen() {
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [darkModeEnabled, setDarkModeEnabled] = useState(false);
-  const [biometricsEnabled, setBiometricsEnabled] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = React.useState(false);
+  const [darkModeEnabled, setDarkModeEnabled] = React.useState(false);
+  const [biometricsEnabled, setBiometricsEnabled] = React.useState(false);
+  const [loadingNotif, setLoadingNotif] = React.useState(false);
 
-  const showCrisisResources = () => {
-    Alert.alert(
-      "Crisis Resources",
-      "• Crisis Text Line: Text HOME to 741741\n" +
-        "• National Suicide Prevention Lifeline: 988\n" +
-        "• SAMHSA National Helpline: 1-800-662-4357\n" +
-        "• Crisis Chat: suicidepreventionlifeline.org\n\n" +
-        "If you're in immediate danger, please call 911 or go to your nearest emergency room.",
-      [{ text: "OK", style: "default" },]
-    );
-  };
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const [pref, scheduled] = await AsyncStorage.multiGet([
+          NOTIF_PREF_KEY,
+          NOTIF_SCHEDULED_KEY,
+        ]).then((es) => es.map(([, v]) => v));
+        if (pref === "true") return setNotificationsEnabled(true);
+        if (pref === "false") return setNotificationsEnabled(false);
+        setNotificationsEnabled(scheduled === "true");
+      } catch {}
+    })();
+  }, []);
 
-  const showAbout = () => {
-    Alert.alert(
-      "About Therapy AI",
-      "Version 1.0.0\n\n" +
-        "This app provides supportive conversations and mental health resources. " +
-        "It is not a replacement for professional mental health care.\n\n" +
-        "Always consult with a qualified mental health professional for serious concerns.",
-      [ { text: "OK", style: "default" },
-        { text: "Terms of Service", onPress: () => openUrl(TOS_URL) },
-        { text: "Privacy Policy", onPress: () => openUrl(PRIVACY_URL) },
-      ]
-    );
-  };
+  const onToggleNotifications = async (value: boolean) => {
+    if (!value) {
+      setNotificationsEnabled(false);
+      await AsyncStorage.setItem(NOTIF_PREF_KEY, "false");
+      try {
+        await cancelDailyReminders();
+      } catch {}
+      return;
+    }
 
-  const showPrivacy = () => {
-    Alert.alert(
-      "Privacy Policy",
-      "Your conversations are stored locally on your device and are not shared with third parties. " +
-        "We are committed to protecting your privacy and maintaining the confidentiality of your data.\n\n" +
-        "For more information, visit our full privacy policy.",
-      [ { text: "OK", style: "default" },
-        { text: "Terms of Service", onPress: () => openUrl(TOS_URL) },
-        { text: "Privacy Policy", onPress: () => openUrl(PRIVACY_URL) },
-      ]
-    );
-  };
+    setLoadingNotif(true);
+    try {
+      const res = await getOrRequestNotifPermission();
 
-  const showDataManagement = () => {
-    Alert.alert(
-      "Data Management",
-      "Your chat history is stored locally on this device. You can export or delete your data at any time.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Clear All Data",
-          style: "destructive",
-          onPress: () => {
-            Alert.alert(
-              "Confirm",
-              "Are you sure you want to delete all chat history? This cannot be undone.",
-              [
-                { text: "Cancel", style: "cancel" },
-                { text: "Delete", style: "destructive" },
-              ]
-            );
-          },
-        },
-      ]
-    );
+      if (res === "granted") {
+        await AsyncStorage.setItem(NOTIF_PREF_KEY, "true");
+        await ensureDailyReminderSetup();
+        setNotificationsEnabled(true);
+        return;
+      }
+
+      setNotificationsEnabled(false);
+      await AsyncStorage.setItem(NOTIF_PREF_KEY, "false");
+
+      if (res === "blocked" && Platform.OS === "ios") {
+        Alert.alert(
+          "Notifications Disabled",
+          "Notifications are turned off for this app in iOS Settings.",
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Open Settings",
+              onPress: () => require("react-native").Linking.openSettings?.(),
+            },
+          ]
+        );
+      } else {
+        Alert.alert("Notifications", "Permission was not granted.");
+      }
+    } finally {
+      setLoadingNotif(false);
+    }
   };
 
   return (
@@ -159,7 +150,8 @@ export default function SettingsScreen() {
             rightComponent={
               <Switch
                 value={notificationsEnabled}
-                onValueChange={setNotificationsEnabled}
+                onValueChange={onToggleNotifications}
+                disabled={loadingNotif}
                 trackColor={{ false: "#767577", true: "#007AFF" }}
                 thumbColor={notificationsEnabled ? "#ffffff" : "#f4f3f4"}
               />

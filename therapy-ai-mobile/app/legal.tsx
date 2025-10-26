@@ -6,35 +6,83 @@ import {
   TouchableOpacity,
   Switch,
   Alert,
+  Linking,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as WebBrowser from "expo-web-browser";
-import { Linking } from "react-native";
 import { useRouter } from "expo-router";
 import { LEGAL_ACCEPT_KEY, TOS_URL, PRIVACY_URL } from "@/constants/legal";
 import Disclaimer from "@/components/legal/Disclaimer";
+import { NOTIF_PREF_KEY, NOTIF_SCHEDULED_KEY } from "@/constants/notifications";
+import {
+  cancelDailyReminders,
+  migrateNotificationsIfNeeded,
+  getOrRequestNotifPermission,
+} from "@/lib/notifications";
+import { openUrl } from "@/lib/legal";
 
 export default function LegalScreen() {
   const router = useRouter();
+
   const [tos, setTos] = React.useState(false);
   const [privacy, setPrivacy] = React.useState(false);
+  const [wantsNotif, setWantsNotif] = React.useState(false);
+  const [loadingNotif, setLoadingNotif] = React.useState(false);
+
   const canAgree = tos && privacy;
 
-  const openUrl = async (url: string) => {
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const [pref, scheduled] = await AsyncStorage.multiGet([
+          NOTIF_PREF_KEY,
+          NOTIF_SCHEDULED_KEY,
+        ]).then((entries) => entries.map(([, v]) => v));
+        if (pref === "true") return setWantsNotif(true);
+        if (pref === "false") return setWantsNotif(false);
+        setWantsNotif(scheduled === "true");
+      } catch {}
+    })();
+  }, []);
+
+  const onToggleNotif = async (value: boolean) => {
+    if (!value) {
+      setWantsNotif(false);
+      await AsyncStorage.setItem(NOTIF_PREF_KEY, "false");
+      return;
+    }
+
+    setLoadingNotif(true);
     try {
-      await WebBrowser.openBrowserAsync(url, {
-        readerMode: false,
-        enableBarCollapsing: true,
-        showTitle: true,
-      });
-    } catch {
-      const supported = await Linking.canOpenURL(url);
-      if (supported) {
-        await Linking.openURL(url);
+      const res = await getOrRequestNotifPermission();
+      if (res === "granted") {
+        setWantsNotif(true);
+        await AsyncStorage.setItem(NOTIF_PREF_KEY, "true");
       } else {
-        Alert.alert("Unable to open link", url);
+        setWantsNotif(false);
+        await AsyncStorage.setItem(NOTIF_PREF_KEY, "false");
+        if (res === "blocked" && Platform.OS === "ios") {
+          Alert.alert(
+            "Notifications Disabled",
+            "Notifications are turned off for this app. You can enable them in Settings.",
+            [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Open Settings",
+                onPress: () => Linking.openSettings?.(),
+              },
+            ]
+          );
+        } else {
+          Alert.alert(
+            "Notifications",
+            "Permission was not granted. You can enable notifications later in Settings."
+          );
+        }
       }
+    } finally {
+      setLoadingNotif(false);
     }
   };
 
@@ -43,7 +91,17 @@ export default function LegalScreen() {
       Alert.alert("Please agree to both policies to continue.");
       return;
     }
+
     await AsyncStorage.setItem(LEGAL_ACCEPT_KEY, "true");
+
+    try {
+      if (wantsNotif) {
+        await migrateNotificationsIfNeeded();
+      } else {
+        await cancelDailyReminders();
+      }
+    } catch {}
+
     router.replace("/(tabs)/dashboard");
   };
 
@@ -55,7 +113,7 @@ export default function LegalScreen() {
         To use our service, you must agree to our policies.
       </Text>
 
-      {/* Row 1: TOS */}
+      {/* TOS */}
       <View style={styles.toggleRow}>
         <Switch value={tos} onValueChange={setTos} />
         <Text style={styles.toggleLabel}>
@@ -70,7 +128,7 @@ export default function LegalScreen() {
         </Text>
       </View>
 
-      {/* Row 2: Privacy */}
+      {/* Privacy */}
       <View style={styles.toggleRow}>
         <Switch value={privacy} onValueChange={setPrivacy} />
         <Text style={styles.toggleLabel}>
@@ -84,6 +142,20 @@ export default function LegalScreen() {
           </Text>
         </Text>
       </View>
+
+      {/* Optional notifications */}
+      <View style={[styles.toggleRow, { marginTop: 24 }]}>
+        <Switch
+          value={wantsNotif}
+          onValueChange={onToggleNotif}
+          disabled={loadingNotif}
+        />
+        <Text style={styles.toggleLabel}>
+          I want to receive daily reminders for journals & checkins{" "}
+          <Text style={styles.muted}>(optional)</Text>
+        </Text>
+      </View>
+
       <Disclaimer />
 
       <TouchableOpacity
@@ -121,6 +193,7 @@ const styles = StyleSheet.create({
     textDecorationLine: "underline",
     fontWeight: "600",
   },
+  muted: { color: "#6b7b8c", fontWeight: "400" },
 
   agreeBtn: {
     marginTop: 24,
@@ -130,7 +203,4 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   agreeText: { color: "#fff", fontSize: 16, fontWeight: "700" },
-
-  secondaryBtn: { marginTop: 10, paddingVertical: 12, alignItems: "center" },
-  secondaryText: { color: "#5f6e77", fontSize: 14, fontWeight: "600" },
 });
