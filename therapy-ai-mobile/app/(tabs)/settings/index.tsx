@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Switch,
   StyleSheet,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -118,9 +119,9 @@ export default function SettingsScreen() {
             { text: "Cancel", style: "cancel" },
             {
               text: "Open Settings",
-              onPress: () => require("react-native").Linking.openSettings?.(),
+              onPress: () => Linking.openSettings?.(),
             },
-          ],
+          ]
         );
       } else {
         Alert.alert("Notifications", "Permission was not granted.");
