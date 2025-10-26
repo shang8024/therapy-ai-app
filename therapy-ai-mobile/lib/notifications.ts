@@ -48,7 +48,7 @@ export async function requestNotificationPermissions(): Promise<boolean> {
     const ask = await Notifications.requestPermissionsAsync();
     status = ask.status;
   }
-  // fire first notification to get around iOS quirkiness
+  // On iOS, sending an initial notification after requesting permissions ensures that notification permissions are fully activated and notifications are delivered reliably.
   await sendImmediateMessage("Welcome to TherapyAI!");
   return status === "granted";
 }
