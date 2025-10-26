@@ -56,7 +56,6 @@ class Database {
       );
     `);
     
-    
     console.log('Database tables created successfully');
   }
 
@@ -80,7 +79,6 @@ class Database {
       'SELECT * FROM journal_entries ORDER BY createdAt DESC'
     );
     
-    console.log('Retrieved journal entries:', result.length);
     return result as JournalEntry[];
   }
 
