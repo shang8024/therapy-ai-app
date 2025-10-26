@@ -38,7 +38,7 @@ const showCrisisResources = () => {
       "• SAMHSA National Helpline: 1-800-662-4357\n" +
       "• Crisis Chat: suicidepreventionlifeline.org\n\n" +
       "If you're in immediate danger, please call 911 or go to your nearest emergency room.",
-    [{ text: "OK", style: "default" }]
+    [{ text: "OK", style: "default" }],
   );
 };
 
@@ -53,7 +53,7 @@ const showAbout = () => {
       { text: "OK", style: "default" },
       { text: "Terms of Service", onPress: () => openUrl(TOS_URL) },
       { text: "Privacy Policy", onPress: () => openUrl(PRIVACY_URL) },
-    ]
+    ],
   );
 };
 
@@ -67,7 +67,7 @@ const showPrivacy = () => {
       { text: "OK", style: "default" },
       { text: "Terms of Service", onPress: () => openUrl(TOS_URL) },
       { text: "Privacy Policy", onPress: () => openUrl(PRIVACY_URL) },
-    ]
+    ],
   );
 };
 
@@ -87,11 +87,11 @@ const showDataManagement = () => {
             [
               { text: "Cancel", style: "cancel" },
               { text: "Delete", style: "destructive" },
-            ]
+            ],
           );
         },
       },
-    ]
+    ],
   );
 };
 

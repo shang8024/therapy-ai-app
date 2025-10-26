@@ -67,7 +67,7 @@ const AnimatedMoodItem: React.FC<AnimatedMoodItemProps> = ({
     if (selected) {
       bump.value = withSequence(
         withSpring(1.08, { mass: 0.6, damping: 10, stiffness: 220 }),
-        withSpring(1.0, { mass: 0.6, damping: 12, stiffness: 220 })
+        withSpring(1.0, { mass: 0.6, damping: 12, stiffness: 220 }),
       );
     } else {
       bump.value = withTiming(1, { duration: 30 });
@@ -83,14 +83,14 @@ const AnimatedMoodItem: React.FC<AnimatedMoodItemProps> = ({
       dist,
       [0, ITEM_WIDTH, ITEM_WIDTH * 2],
       [1.3, 1.0, 0.88],
-      Extrapolation.CLAMP
+      Extrapolation.CLAMP,
     );
 
     const opacity = interpolate(
       dist,
       [0, ITEM_WIDTH * 0.75, ITEM_WIDTH * 2],
       [1.0, 0.6, 0.25],
-      Extrapolation.CLAMP
+      Extrapolation.CLAMP,
     );
 
     return {
@@ -201,7 +201,7 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({
     const x = e.nativeEvent.contentOffset.x;
     const index = Math.max(
       0,
-      Math.min(options.length - 1, Math.round(x / SNAP))
+      Math.min(options.length - 1, Math.round(x / SNAP)),
     );
     if (index !== selectedIndex) {
       onChange(options[index].value);

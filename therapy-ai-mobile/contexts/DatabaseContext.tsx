@@ -1,6 +1,6 @@
 // contexts/DatabaseContext.tsx
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { database } from '../utils/database';
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { database } from "../utils/database";
 
 interface DatabaseContextValue {
   isInitialized: boolean;
@@ -14,7 +14,9 @@ interface DatabaseProviderProps {
   children: React.ReactNode;
 }
 
-export const DatabaseProvider: React.FC<DatabaseProviderProps> = ({ children }) => {
+export const DatabaseProvider: React.FC<DatabaseProviderProps> = ({
+  children,
+}) => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -26,10 +28,12 @@ export const DatabaseProvider: React.FC<DatabaseProviderProps> = ({ children }) 
         setError(null);
         await database.init();
         setIsInitialized(true);
-        console.log('Database initialized successfully');
+        console.log("Database initialized successfully");
       } catch (err) {
-        console.error('Failed to initialize database:', err);
-        setError(err instanceof Error ? err.message : 'Failed to initialize database');
+        console.error("Failed to initialize database:", err);
+        setError(
+          err instanceof Error ? err.message : "Failed to initialize database",
+        );
       } finally {
         setIsLoading(false);
       }
@@ -54,7 +58,7 @@ export const DatabaseProvider: React.FC<DatabaseProviderProps> = ({ children }) 
 export const useDatabase = () => {
   const context = useContext(DatabaseContext);
   if (!context) {
-    throw new Error('useDatabase must be used within a DatabaseProvider');
+    throw new Error("useDatabase must be used within a DatabaseProvider");
   }
   return context;
 };
