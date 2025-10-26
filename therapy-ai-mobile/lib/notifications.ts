@@ -71,12 +71,12 @@ export async function scheduleDailyReminders(): Promise<void> {
   const ids: string[] = [];
   for (const [i, slot] of DEFAULT_REMINDER_SLOTS.entries()) {
     const isMorning = i === 0;
-    const { title, body } = isMorning
+    const { title, body, data } = isMorning
       ? REMINDER_TEXT.morning
       : REMINDER_TEXT.evening;
 
     const id = await Notifications.scheduleNotificationAsync({
-      content: { title, body },
+      content: { title, body, data },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DAILY,
         hour: slot.hour,
@@ -100,7 +100,7 @@ export async function cancelDailyReminders(): Promise<void> {
     try {
       const ids: string[] = JSON.parse(raw);
       await Promise.all(
-        ids.map((id) => Notifications.cancelScheduledNotificationAsync(id))
+        ids.map((id) => Notifications.cancelScheduledNotificationAsync(id)),
       );
     } catch {}
   }

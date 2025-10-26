@@ -17,9 +17,11 @@ export const REMINDER_TEXT = {
   morning: {
     title: "Daily Check-in",
     body: "Good morning — how are you feeling today?",
+    data: { target: "/(tabs)/checkin" },
   },
   evening: {
     title: "Daily Check-in",
     body: "Good evening — take a moment to reflect.",
+    data: { target: "/(tabs)/checkin" },
   },
 } as const;

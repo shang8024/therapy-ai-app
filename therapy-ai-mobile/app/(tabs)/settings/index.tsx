@@ -1,5 +1,4 @@
-import Disclaimer from "@/components/legal/Disclaimer";
-import React, { useState } from "react";
+import React from "react";
 import {
   Text,
   View,
@@ -23,6 +22,7 @@ import {
   getOrRequestNotifPermission,
 } from "@/lib/notifications";
 import { Platform, Alert } from "react-native";
+import Disclaimer from "@/components/legal/Disclaimer";
 
 interface SettingItemProps {
   title: string;
@@ -120,7 +120,7 @@ export default function SettingsScreen() {
               text: "Open Settings",
               onPress: () => require("react-native").Linking.openSettings?.(),
             },
-          ]
+          ],
         );
       } else {
         Alert.alert("Notifications", "Permission was not granted.");

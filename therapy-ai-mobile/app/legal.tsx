@@ -72,12 +72,12 @@ export default function LegalScreen() {
                 text: "Open Settings",
                 onPress: () => Linking.openSettings?.(),
               },
-            ]
+            ],
           );
         } else {
           Alert.alert(
             "Notifications",
-            "Permission was not granted. You can enable notifications later in Settings."
+            "Permission was not granted. You can enable notifications later in Settings.",
           );
         }
       }
