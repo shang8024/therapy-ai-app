@@ -13,10 +13,20 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "plugins": [
+      [
+        "expo-av",
+        {
+          "microphonePermission": "This app uses the microphone to record voice messages for your therapy sessions."
+        }
+      ],
+      ["expo-sqlite"]
+    ],
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSUserNotificationUsageDescription": "We use notifications to remind you to do your daily check-in."
+        "NSUserNotificationUsageDescription": "We use notifications to remind you to do your daily check-in.",
+        "NSMicrophoneUsageDescription": "This app uses the microphone to record voice messages for your therapy sessions."
       }
     },
     "android": {
@@ -26,13 +36,11 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.therapyai"
+      "package": "com.anonymous.therapyai",
+      "permissions": ["android.permission.RECORD_AUDIO"]
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    },
-    "plugins": [
-      "expo-sqlite"
-    ]
+    }
   }
 }

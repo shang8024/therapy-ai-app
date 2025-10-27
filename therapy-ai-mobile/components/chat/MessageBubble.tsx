@@ -1,14 +1,22 @@
 // components/chat/MessageBubble.tsx
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, Pressable } from "react-native";
 import { Message } from "../../types/chat";
+import { useTheme } from "../../contexts/ThemeContext";
 
 interface MessageBubbleProps {
   message: Message;
 }
 
 export default function MessageBubble({ message }: MessageBubbleProps) {
+  const { theme } = useTheme();
   const isUser = message.role === "user";
+  const isAudioMessage = message.messageType === "audio";
+
+  const handlePlayAudio = () => {
+    // TODO: Implement audio playback when ElevenLabs integration is added
+    // For now, just show that it's an audio message
+  };
 
   return (
     <View
@@ -20,15 +28,35 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
       <View
         style={[
           styles.bubble,
-          isUser ? styles.userBubble : styles.assistantBubble,
+          isUser 
+            ? { backgroundColor: theme.colors.primary }
+            : { backgroundColor: theme.colors.surface },
+          isAudioMessage && styles.audioBubble,
         ]}
       >
-        <Text
-          style={[styles.text, isUser ? styles.userText : styles.assistantText]}
-        >
-          {message.content}
-        </Text>
-        <Text style={styles.timestamp}>
+        {isAudioMessage ? (
+          <Pressable onPress={handlePlayAudio} style={styles.audioContent}>
+            <Text style={styles.audioIcon}>{isUser ? "🎤" : "🔊"}</Text>
+            <Text
+              style={[
+                styles.audioText,
+                { color: isUser ? "#ffffff" : theme.colors.text },
+              ]}
+            >
+              {isUser ? "Voice message" : "AI Voice Response"}
+            </Text>
+          </Pressable>
+        ) : (
+          <Text
+            style={[
+              styles.text,
+              { color: isUser ? "#ffffff" : theme.colors.text },
+            ]}
+          >
+            {message.content}
+          </Text>
+        )}
+        <Text style={[styles.timestamp, { color: isUser ? "rgba(255,255,255,0.7)" : theme.colors.textSecondary }]}>
           {message.timestamp.toLocaleTimeString([], {
             hour: "2-digit",
             minute: "2-digit",
@@ -80,5 +108,20 @@ const styles = StyleSheet.create({
     color: "#666666",
     marginTop: 4,
     opacity: 0.7,
+  },
+  audioBubble: {
+    minWidth: 120,
+  },
+  audioContent: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  audioIcon: {
+    fontSize: 20,
+    marginRight: 8,
+  },
+  audioText: {
+    fontSize: 14,
+    fontWeight: "500",
   },
 });

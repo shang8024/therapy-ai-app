@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { prettyDate } from "@/constants/checkin";
 import { useCheckin } from "@/contexts/CheckinContext";
+import { useTheme } from "@/contexts/ThemeContext";
 
 import CheckinRecord from "@/components/checkin/CheckInRecord";
 import CheckinForm from "@/components/checkin/CheckInForm";
@@ -10,13 +11,16 @@ import LoadingScreen from "@/components/LoadingScreen";
 
 export default function CheckinScreen() {
   const { date, loading, isEditing, record } = useCheckin();
+  const { theme } = useTheme();
 
   if (loading) {
     return <LoadingScreen />;
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+    >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <Text style={styles.title}>Daily Check-in</Text>

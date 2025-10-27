@@ -24,6 +24,7 @@ import {
 } from "@/lib/notifications";
 import { Platform, Alert } from "react-native";
 import Disclaimer from "@/components/legal/Disclaimer";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface SettingItemProps {
   title: string;
@@ -40,38 +41,69 @@ const SettingItem: React.FC<SettingItemProps> = ({
   rightComponent,
   showArrow = false,
 }) => {
-  const Container: any = onPress ? TouchableOpacity : View;
+  const { theme } = useTheme();
   return (
-    <Container style={styles.settingItem} onPress={onPress} disabled={!onPress}>
+    <TouchableOpacity
+      style={[styles.settingItem, { borderBottomColor: theme.colors.border }]}
+      onPress={onPress}
+      disabled={!onPress}
+    >
       <View style={styles.settingContent}>
-        <Text style={styles.settingTitle}>{title}</Text>
+        <Text style={[styles.settingTitle, { color: theme.colors.text }]}>
+          {title}
+        </Text>
         {description && (
-          <Text style={styles.settingDescription}>{description}</Text>
+          <Text
+            style={[
+              styles.settingDescription,
+              { color: theme.colors.textSecondary },
+            ]}
+          >
+            {description}
+          </Text>
         )}
       </View>
       {rightComponent && (
         <View style={styles.rightComponent}>{rightComponent}</View>
       )}
-      {showArrow && <Text style={styles.arrow}>›</Text>}
-    </Container>
+      {showArrow && (
+        <Text style={[styles.arrow, { color: theme.colors.textSecondary }]}>
+          ›
+        </Text>
+      )}
+    </TouchableOpacity>
   );
 };
 
 const SettingSection: React.FC<{
   title: string;
   children: React.ReactNode;
-}> = ({ title, children }) => (
-  <View style={styles.section}>
-    <Text style={styles.sectionTitle}>{title}</Text>
-    <View style={styles.sectionContent}>{children}</View>
-  </View>
-);
+}> = ({ title, children }) => {
+  const { theme } = useTheme();
+  return (
+    <View style={styles.section}>
+      <Text
+        style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}
+      >
+        {title}
+      </Text>
+      <View
+        style={[
+          styles.sectionContent,
+          { backgroundColor: theme.colors.surface },
+        ]}
+      >
+        {children}
+      </View>
+    </View>
+  );
+};
 
 export default function SettingsScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(false);
-  const [darkModeEnabled, setDarkModeEnabled] = React.useState(false);
   const [biometricsEnabled, setBiometricsEnabled] = React.useState(false);
   const [loadingNotif, setLoadingNotif] = React.useState(false);
+  const { theme, isDarkMode, toggleTheme } = useTheme();
 
   React.useEffect(() => {
     (async () => {
@@ -132,14 +164,25 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+    >
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Settings</Text>
-          <Text style={styles.headerSubtitle}>
+        <View
+          style={[styles.header, { borderBottomColor: theme.colors.border }]}
+        >
+          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
+            Settings
+          </Text>
+          <Text
+            style={[
+              styles.headerSubtitle,
+              { color: theme.colors.textSecondary },
+            ]}
+          >
             Customize your therapy experience
           </Text>
         </View>
@@ -153,8 +196,13 @@ export default function SettingsScreen() {
                 value={notificationsEnabled}
                 onValueChange={onToggleNotifications}
                 disabled={loadingNotif}
-                trackColor={{ false: "#767577", true: "#007AFF" }}
-                thumbColor={notificationsEnabled ? "#ffffff" : "#f4f3f4"}
+                trackColor={{
+                  false: theme.colors.border,
+                  true: theme.colors.primary,
+                }}
+                thumbColor={
+                  notificationsEnabled ? "#ffffff" : theme.colors.surface
+                }
               />
             }
           />
@@ -166,10 +214,13 @@ export default function SettingsScreen() {
             description="Use dark theme for better night viewing"
             rightComponent={
               <Switch
-                value={darkModeEnabled}
-                onValueChange={setDarkModeEnabled}
-                trackColor={{ false: "#767577", true: "#007AFF" }}
-                thumbColor={darkModeEnabled ? "#ffffff" : "#f4f3f4"}
+                value={isDarkMode}
+                onValueChange={toggleTheme}
+                trackColor={{
+                  false: theme.colors.border,
+                  true: theme.colors.primary,
+                }}
+                thumbColor={isDarkMode ? "#ffffff" : theme.colors.surface}
               />
             }
           />
@@ -183,8 +234,13 @@ export default function SettingsScreen() {
               <Switch
                 value={biometricsEnabled}
                 onValueChange={setBiometricsEnabled}
-                trackColor={{ false: "#767577", true: "#007AFF" }}
-                thumbColor={biometricsEnabled ? "#ffffff" : "#f4f3f4"}
+                trackColor={{
+                  false: theme.colors.border,
+                  true: theme.colors.primary,
+                }}
+                thumbColor={
+                  biometricsEnabled ? "#ffffff" : theme.colors.surface
+                }
               />
             }
           />
@@ -229,7 +285,6 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
   },
   scrollView: {
     flex: 1,
@@ -237,19 +292,15 @@ const styles = StyleSheet.create({
   header: {
     padding: 20,
     paddingBottom: 30,
-    backgroundColor: "#ffffff",
     borderBottomWidth: 1,
-    borderBottomColor: "#e0e0e0",
   },
   headerTitle: {
     fontSize: 32,
     fontWeight: "bold",
-    color: "#333333",
     marginBottom: 5,
   },
   headerSubtitle: {
     fontSize: 16,
-    color: "#666666",
   },
   section: {
     marginTop: 20,
@@ -257,14 +308,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#333333",
     marginLeft: 20,
     marginBottom: 10,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   sectionContent: {
-    backgroundColor: "#ffffff",
     borderRadius: 12,
     marginHorizontal: 15,
     overflow: "hidden",
@@ -273,9 +322,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     padding: 16,
-    backgroundColor: "#ffffff",
     borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
   },
   settingContent: {
     flex: 1,
@@ -283,12 +330,10 @@ const styles = StyleSheet.create({
   settingTitle: {
     fontSize: 16,
     fontWeight: "500",
-    color: "#333333",
     marginBottom: 2,
   },
   settingDescription: {
     fontSize: 14,
-    color: "#666666",
     lineHeight: 18,
   },
   rightComponent: {
@@ -296,7 +341,6 @@ const styles = StyleSheet.create({
   },
   arrow: {
     fontSize: 20,
-    color: "#c0c0c0",
     marginLeft: 8,
   },
 });

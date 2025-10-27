@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, router } from "expo-router";
 import { useChat } from "../../../contexts/ChatContext";
+import { useTheme } from "../../../contexts/ThemeContext";
 import MessageBubble from "../../../components/chat/MessageBubble";
 import ChatInput from "../../../components/chat/ChatInput";
 
@@ -61,6 +62,7 @@ function CrisisResourcesModal({
 }
 
 export default function ChatSessionScreen() {
+  const { theme } = useTheme();
   const { chatId } = useLocalSearchParams();
   const {
     currentChatId,
@@ -99,8 +101,8 @@ export default function ChatSessionScreen() {
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <Text style={styles.emptyStateTitle}>Start the conversation</Text>
-      <Text style={styles.emptyStateSubtitle}>
+      <Text style={[styles.emptyStateTitle, { color: theme.colors.text }]}>Start the conversation</Text>
+      <Text style={[styles.emptyStateSubtitle, { color: theme.colors.textSecondary }]}>
         Share what's on your mind. Your AI companion is here to listen and
         provide gentle guidance.
       </Text>
@@ -109,16 +111,16 @@ export default function ChatSessionScreen() {
 
   if (!currentChatId || currentChatId !== chatId) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading conversation...</Text>
+          <Text style={[styles.loadingText, { color: theme.colors.text }]}>Loading conversation...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Crisis Resources Modal */}
       <CrisisResourcesModal
         visible={showCrisisModal}
@@ -126,15 +128,15 @@ export default function ChatSessionScreen() {
       />
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
         <Pressable style={styles.backButton} onPress={handleBackPress}>
-          <Text style={styles.backButtonText}>← Back</Text>
+          <Text style={[styles.backButtonText, { color: theme.colors.primary }]}>← Back</Text>
         </Pressable>
-        <Text style={styles.headerTitle} numberOfLines={1}>
+        <Text style={[styles.headerTitle, { color: theme.colors.text }]} numberOfLines={1}>
           {currentSession?.title || "Chat"}
         </Text>
         <Pressable
-          style={styles.crisisButton}
+          style={[styles.crisisButton, { backgroundColor: theme.colors.error }]}
           onPress={() => setShowCrisisModal(true)}
         >
           <Text style={styles.crisisButtonText}>Crisis Help</Text>
@@ -164,13 +166,7 @@ export default function ChatSessionScreen() {
         <ChatInput />
       </KeyboardAvoidingView>
 
-      {/* Safety Disclaimer */}
-      <View style={styles.disclaimerContainer}>
-        <Text style={styles.disclaimerText}>
-          This AI provides emotional support but is not a substitute for
-          professional mental health treatment.
-        </Text>
-      </View>
+      
     </SafeAreaView>
   );
 }
@@ -179,6 +175,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F8F9FA",
+    marginBottom: -40,
   },
   header: {
     flexDirection: "row",
