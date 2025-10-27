@@ -42,6 +42,8 @@ type ChatAction =
   | { type: "ADD_MESSAGE"; payload: Message }
   | { type: "SET_CHAT_SESSIONS"; payload: ChatSession[] }
   | { type: "ADD_CHAT_SESSION"; payload: ChatSession }
+  | { type: "UPDATE_CHAT_SESSION"; payload: ChatSession }
+  | { type: "DELETE_CHAT_SESSION"; payload: string }
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "SET_CONNECTED"; payload: boolean }
   | { type: "SET_INPUT_TEXT"; payload: string }
@@ -69,6 +71,25 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return {
         ...state,
         chatSessions: [action.payload, ...state.chatSessions],
+      };
+    case "UPDATE_CHAT_SESSION":
+      return {
+        ...state,
+        chatSessions: state.chatSessions.map((session) =>
+          session.id === action.payload.id ? action.payload : session,
+        ),
+      };
+    case "DELETE_CHAT_SESSION":
+      return {
+        ...state,
+        chatSessions: state.chatSessions.filter(
+          (session) => session.id !== action.payload,
+        ),
+        currentChatId:
+          state.currentChatId === action.payload
+            ? undefined
+            : state.currentChatId,
+        messages: state.currentChatId === action.payload ? [] : state.messages,
       };
     case "SET_LOADING":
       return { ...state, isLoading: action.payload };
@@ -281,6 +302,74 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     ],
   );
 
+  const sendAudioMessage = useCallback(
+    async (audioUri: string) => {
+      if (!state.currentChatId) return;
+
+      dispatch({ type: "SET_LOADING", payload: true });
+
+      // Create user audio message
+      const userMessage: Message = {
+        id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        content: "🎤 Voice message", // Display text for audio message
+        role: "user",
+        timestamp: new Date(),
+        chatId: state.currentChatId,
+        audioUri,
+        messageType: "audio",
+      };
+
+      dispatch({ type: "ADD_MESSAGE", payload: userMessage });
+
+      // Simulate AI audio response (replace with actual voice AI integration)
+      setTimeout(
+        async () => {
+          const aiResponse: Message = {
+            id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            content: "🔊 AI Voice Response", // Display text for AI audio response
+            role: "assistant",
+            timestamp: new Date(),
+            chatId: state.currentChatId!,
+            messageType: "audio",
+            // In the future, this will have an audioUri from ElevenLabs
+          };
+
+          dispatch({ type: "ADD_MESSAGE", payload: aiResponse });
+
+          // Update session with last message info
+          const updatedSessions = state.chatSessions.map((session) =>
+            session.id === state.currentChatId
+              ? {
+                  ...session,
+                  lastMessage: "🎤 Voice conversation",
+                  lastMessageAt: new Date(),
+                  messageCount: session.messageCount + 2, // user + AI message
+                  title:
+                    session.messageCount === 0 ? "Voice Chat" : session.title,
+                }
+              : session,
+          );
+
+          dispatch({ type: "SET_CHAT_SESSIONS", payload: updatedSessions });
+          await saveChatSessions(updatedSessions);
+
+          const currentMessages = [...state.messages, userMessage, aiResponse];
+          await saveChatMessages(state.currentChatId!, currentMessages);
+
+          dispatch({ type: "SET_LOADING", payload: false });
+        },
+        1000 + Math.random() * 1500,
+      ); // Simulate network delay
+    },
+    [
+      state.currentChatId,
+      state.chatSessions,
+      state.messages,
+      saveChatSessions,
+      saveChatMessages,
+    ],
+  );
+
   const clearCurrentChat = useCallback(() => {
     dispatch({ type: "CLEAR_CURRENT_CHAT" });
   }, []);
@@ -288,6 +377,50 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const setInputText = useCallback((text: string) => {
     dispatch({ type: "SET_INPUT_TEXT", payload: text });
   }, []);
+
+  const deleteChatSession = useCallback(
+    async (chatId: string) => {
+      try {
+        dispatch({ type: "DELETE_CHAT_SESSION", payload: chatId });
+        
+        // Update AsyncStorage
+        const updatedSessions = state.chatSessions.filter(
+          (session) => session.id !== chatId,
+        );
+        await saveChatSessions(updatedSessions);
+        
+        // Remove chat messages
+        await AsyncStorage.removeItem(`appv1:chat:${chatId}`);
+      } catch {
+        // Handle error silently or use proper error reporting
+      }
+    },
+    [state.chatSessions, saveChatSessions],
+  );
+
+  const togglePinChatSession = useCallback(
+    async (chatId: string) => {
+      try {
+        const updatedSessions = state.chatSessions.map((session) => {
+          if (session.id === chatId) {
+            const isPinned = !session.isPinned;
+            return {
+              ...session,
+              isPinned,
+              pinnedAt: isPinned ? new Date() : undefined,
+            };
+          }
+          return session;
+        });
+
+        dispatch({ type: "SET_CHAT_SESSIONS", payload: updatedSessions });
+        await saveChatSessions(updatedSessions);
+      } catch {
+        // Handle error silently or use proper error reporting
+      }
+    },
+    [state.chatSessions, saveChatSessions],
+  );
 
   const value: ChatContextType = {
     currentChatId: state.currentChatId,
@@ -298,9 +431,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     inputText: state.inputText,
     setInputText,
     sendMessage,
+    sendAudioMessage,
     createNewChat,
     loadChatSession,
     clearCurrentChat,
+    deleteChatSession,
+    togglePinChatSession,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

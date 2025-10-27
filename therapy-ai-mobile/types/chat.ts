@@ -5,6 +5,8 @@ export interface Message {
   role: "user" | "assistant";
   timestamp: Date;
   chatId: string;
+  audioUri?: string; // For voice messages
+  messageType?: "text" | "audio";
 }
 
 export interface ChatSession {
@@ -14,6 +16,8 @@ export interface ChatSession {
   lastMessage?: string;
   lastMessageAt?: Date;
   messageCount: number;
+  isPinned?: boolean;
+  pinnedAt?: Date;
 }
 
 export interface ChatContextType {
@@ -25,9 +29,12 @@ export interface ChatContextType {
   inputText: string;
   setInputText: (text: string) => void;
   sendMessage: (content: string) => Promise<void>;
+  sendAudioMessage: (audioUri: string) => Promise<void>;
   createNewChat: () => Promise<string>;
   loadChatSession: (chatId: string) => Promise<void>;
   clearCurrentChat: () => void;
+  deleteChatSession: (chatId: string) => Promise<void>;
+  togglePinChatSession: (chatId: string) => Promise<void>;
 }
 
 export interface CrisisKeywords {

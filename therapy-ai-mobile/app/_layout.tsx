@@ -33,7 +33,7 @@ export default function RootLayout() {
         if (!target) return;
         if (accepted) router.push(target);
         else pendingTargetRef.current = target;
-      },
+      }
     );
     return () => sub.remove();
   }, [accepted]);

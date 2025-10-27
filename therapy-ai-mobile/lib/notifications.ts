@@ -100,7 +100,7 @@ export async function cancelDailyReminders(): Promise<void> {
     try {
       const ids: string[] = JSON.parse(raw);
       await Promise.all(
-        ids.map((id) => Notifications.cancelScheduledNotificationAsync(id)),
+        ids.map((id) => Notifications.cancelScheduledNotificationAsync(id))
       );
     } catch {}
   }

@@ -1,10 +1,20 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export default function Disclaimer() {
+  const { theme } = useTheme();
   return (
-    <View style={styles.disclaimer}>
-      <Text style={styles.disclaimerText}>
+    <View
+      style={[
+        styles.disclaimer,
+        {
+          backgroundColor: theme.colors.surface,
+          borderColor: theme.colors.border,
+        },
+      ]}
+    >
+      <Text style={[styles.disclaimerText, { color: theme.colors.text }]}>
         ⚠️ Important: This app is not a substitute for professional mental
         health care. If you're experiencing a mental health emergency, please
         contact emergency services or a crisis hotline immediately.
@@ -24,7 +34,6 @@ const styles = StyleSheet.create({
   },
   disclaimerText: {
     fontSize: 14,
-    color: "#856404",
     lineHeight: 20,
   },
 });
