@@ -56,7 +56,48 @@ class Database {
       );
     `);
 
+    // Add sample data for testing if no data exists
+    await this.addSampleDataIfNeeded();
+
     console.log("Database tables created successfully");
+  }
+
+  private async addSampleDataIfNeeded(): Promise<void> {
+    if (!this.db) throw new Error("Database not initialized");
+
+    // Check if we already have check-in data
+    const existingData = await this.db.getFirstAsync(
+      'SELECT COUNT(*) as count FROM checkin_entries'
+    );
+    const count = (existingData as any)?.count || 0;
+
+    if (count === 0) {
+      // Add sample check-in data for the last 7 days
+      const today = new Date();
+      const sampleMoods = [4, 3, 5, 4, 2, 3, 4]; // Sample mood values
+      const sampleNotes = [
+        "Feeling good today!",
+        "Had some challenges but managed well",
+        "Excellent day overall",
+        "Pretty good, minor stress",
+        "Tough day, but I got through it",
+        "Okay day, some ups and downs",
+        "Good day, feeling positive"
+      ];
+
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - i);
+        const dateString = date.toISOString().split('T')[0];
+        
+        await this.db.runAsync(
+          'INSERT INTO checkin_entries (mood, notes, date, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?)',
+          [sampleMoods[i], sampleNotes[i], dateString, new Date().toISOString(), new Date().toISOString()]
+        );
+      }
+      
+      console.log("Sample check-in data added for testing");
+    }
   }
 
   async createJournalEntry(title: string, content: string): Promise<number> {
@@ -188,6 +229,147 @@ class Database {
     );
 
     return result as CheckinEntry[];
+  }
+
+  // Dashboard statistics methods
+  async getCheckinStatistics(): Promise<{
+    totalCheckins: number;
+    currentStreak: number;
+    longestStreak: number;
+    averageMood: number;
+  }> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    // Get total checkins
+    const totalResult = await this.db.getFirstAsync(
+      'SELECT COUNT(*) as count FROM checkin_entries'
+    );
+    const totalCheckins = (totalResult as any)?.count || 0;
+
+    // Get all checkins ordered by date
+    const allCheckins = await this.db.getAllAsync(
+      'SELECT * FROM checkin_entries ORDER BY date ASC'
+    ) as CheckinEntry[];
+
+    // Calculate streaks
+    const { currentStreak, longestStreak } = this.calculateStreaks(allCheckins);
+
+    // Calculate average mood
+    const averageMood = allCheckins.length > 0 
+      ? allCheckins.reduce((sum, entry) => sum + entry.mood, 0) / allCheckins.length 
+      : 0;
+
+    return {
+      totalCheckins,
+      currentStreak,
+      longestStreak,
+      averageMood: Math.round(averageMood * 100) / 100, // Round to 2 decimal places
+    };
+  }
+
+  async getMoodTrendData(days: number = 30): Promise<{
+    labels: string[];
+    data: number[];
+    dates: string[];
+  }> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(endDate.getDate() - days + 1);
+
+    const result = await this.db.getAllAsync(
+      'SELECT * FROM checkin_entries WHERE date >= ? AND date <= ? ORDER BY date ASC',
+      [startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]]
+    ) as CheckinEntry[];
+
+    // Create a map of existing data
+    const dataMap = new Map<string, number>();
+    result.forEach(entry => {
+      dataMap.set(entry.date, entry.mood);
+    });
+
+    // Generate labels and data for all days in range
+    const labels: string[] = [];
+    const data: number[] = [];
+    const dates: string[] = [];
+
+    for (let i = 0; i < days; i++) {
+      const currentDate = new Date(startDate);
+      currentDate.setDate(startDate.getDate() + i);
+      const dateString = currentDate.toISOString().split('T')[0];
+      
+      // Format label for display (e.g., "Jan 15")
+      const label = currentDate.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric' 
+      });
+      
+      labels.push(label);
+      dates.push(dateString);
+      
+      // Use existing mood data or null if no checkin for that day
+      data.push(dataMap.get(dateString) || 0);
+    }
+
+    return { labels, data, dates };
+  }
+
+  private calculateStreaks(checkins: CheckinEntry[]): {
+    currentStreak: number;
+    longestStreak: number;
+  } {
+    if (checkins.length === 0) {
+      return { currentStreak: 0, longestStreak: 0 };
+    }
+
+    // Sort checkins by date
+    const sortedCheckins = [...checkins].sort((a, b) => a.date.localeCompare(b.date));
+    
+    let currentStreak = 0;
+    let longestStreak = 0;
+    let tempStreak = 0;
+
+    // Calculate current streak (from today backwards)
+    const today = new Date().toISOString().split('T')[0];
+    const todayIndex = sortedCheckins.findIndex(entry => entry.date === today);
+    
+    if (todayIndex >= 0) {
+      // Start from today and count backwards
+      for (let i = todayIndex; i >= 0; i--) {
+        const currentDate = new Date(sortedCheckins[i].date);
+        const previousDate = i > 0 ? new Date(sortedCheckins[i - 1].date) : null;
+        
+        if (i === todayIndex) {
+          currentStreak = 1;
+        } else if (previousDate) {
+          const dayDiff = Math.floor((currentDate.getTime() - previousDate.getTime()) / (1000 * 60 * 60 * 24));
+          if (dayDiff === 1) {
+            currentStreak++;
+          } else {
+            break;
+          }
+        }
+      }
+    }
+
+    // Calculate longest streak
+    tempStreak = 1;
+    for (let i = 1; i < sortedCheckins.length; i++) {
+      const currentDate = new Date(sortedCheckins[i].date);
+      const previousDate = new Date(sortedCheckins[i - 1].date);
+      const dayDiff = Math.floor((currentDate.getTime() - previousDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (dayDiff === 1) {
+        tempStreak++;
+      } else {
+        longestStreak = Math.max(longestStreak, tempStreak);
+        tempStreak = 1;
+      }
+    }
+    longestStreak = Math.max(longestStreak, tempStreak);
+
+    return { currentStreak, longestStreak };
   }
 }
 
