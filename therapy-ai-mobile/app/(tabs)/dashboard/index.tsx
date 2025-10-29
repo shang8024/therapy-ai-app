@@ -5,17 +5,36 @@ import {
   View,
   TouchableOpacity,
   ScrollView,
+  RefreshControl,
 } from "react-native";
 import { Link } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "../../../contexts/ThemeContext";
+import { useDashboard } from "../../../contexts/DashboardContext";
+import { MoodTrendChart } from "../../../components/dashboard/MoodTrendChart";
+import { StatisticsCards } from "../../../components/dashboard/StatisticsCards";
 
-export default function HomeScreen() {
+export default function DashboardScreen() {
   const { theme } = useTheme();
+  const {
+    statistics,
+    moodTrend7Days,
+    moodTrend30Days,
+    loading,
+    error,
+    refreshData,
+    selectedTimeRange,
+    setSelectedTimeRange,
+  } = useDashboard();
   
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={loading} onRefresh={refreshData} />
+        }
+      >
         <View style={styles.header}>
           <Text style={[styles.title, { color: theme.colors.text }]}>Welcome to Therapy AI</Text>
           <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
@@ -83,6 +102,30 @@ export default function HomeScreen() {
               </View>
             </TouchableOpacity>
           </Link>
+        </View>
+
+        <View style={styles.analyticsSection}>
+          <Text style={[styles.analyticsTitle, { color: theme.colors.text }]}>
+            Your Progress
+          </Text>
+          
+          {error && (
+            <View style={[styles.errorContainer, { backgroundColor: theme.colors.surface }]}>
+              <Text style={[styles.errorText, { color: theme.colors.error }]}>
+                {error}
+              </Text>
+            </View>
+          )}
+
+          <StatisticsCards statistics={statistics} loading={loading} />
+
+          <MoodTrendChart
+            moodTrend7Days={moodTrend7Days}
+            moodTrend30Days={moodTrend30Days}
+            selectedTimeRange={selectedTimeRange}
+            onTimeRangeChange={setSelectedTimeRange}
+            loading={loading}
+          />
         </View>
 
         <View style={styles.footer}>
@@ -160,6 +203,32 @@ const styles = StyleSheet.create({
   cardDescription: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  analyticsSection: {
+    marginTop: 20,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: "#e1e8ed",
+  },
+  analyticsTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#2c3e50",
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  errorContainer: {
+    backgroundColor: "#fee",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#fcc",
+  },
+  errorText: {
+    fontSize: 14,
+    color: "#e74c3c",
+    textAlign: "center",
   },
   footer: {
     alignItems: "center",
