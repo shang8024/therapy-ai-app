@@ -25,6 +25,7 @@ import {
 import { Platform, Alert } from "react-native";
 import Disclaimer from "@/components/legal/Disclaimer";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface SettingItemProps {
   title: string;
@@ -104,6 +105,7 @@ export default function SettingsScreen() {
   const [biometricsEnabled, setBiometricsEnabled] = React.useState(false);
   const [loadingNotif, setLoadingNotif] = React.useState(false);
   const { theme, isDarkMode, toggleTheme } = useTheme();
+  const { user, signOut } = useAuth();
 
   React.useEffect(() => {
     (async () => {
@@ -223,6 +225,34 @@ export default function SettingsScreen() {
                 thumbColor={isDarkMode ? "#ffffff" : theme.colors.surface}
               />
             }
+          />
+        </SettingSection>
+
+        <SettingSection title="Account">
+          <SettingItem
+            title="Email"
+            description={user?.email || "Not signed in"}
+          />
+          <SettingItem
+            title="Sign Out"
+            description="Sign out of your account"
+            onPress={async () => {
+              Alert.alert(
+                "Sign Out",
+                "Are you sure you want to sign out?",
+                [
+                  { text: "Cancel", style: "cancel" },
+                  {
+                    text: "Sign Out",
+                    style: "destructive",
+                    onPress: async () => {
+                      await signOut();
+                    },
+                  },
+                ]
+              );
+            }}
+            showArrow
           />
         </SettingSection>
 

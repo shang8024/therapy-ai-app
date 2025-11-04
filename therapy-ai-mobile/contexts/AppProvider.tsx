@@ -6,6 +6,7 @@ import { CheckinProvider } from "./CheckinContext";
 import { ChatProvider } from "./ChatContext";
 import { ThemeProvider } from "./ThemeContext";
 import { DashboardProvider } from "./DashboardContext";
+import { AuthProvider } from "./AuthContext";
 
 export const AppProviders: React.FC<React.PropsWithChildren> = ({
   children,
@@ -13,13 +14,15 @@ export const AppProviders: React.FC<React.PropsWithChildren> = ({
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <DatabaseProvider>
-          <CheckinProvider>
-            <DashboardProvider>
-              <ChatProvider>{children}</ChatProvider>
-            </DashboardProvider>
-          </CheckinProvider>
-        </DatabaseProvider>
+        <AuthProvider>
+          <DatabaseProvider>
+            <CheckinProvider>
+              <DashboardProvider>
+                <ChatProvider>{children}</ChatProvider>
+              </DashboardProvider>
+            </CheckinProvider>
+          </DatabaseProvider>
+        </AuthProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );
