@@ -9,6 +9,8 @@ import React, {
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Message, ChatSession, ChatContextType } from "../types/chat";
+import { sendMessageToAI } from "../lib/groq-service";
+import { supabase } from "../lib/supabase";
 
 // Crisis detection keywords
 const CRISIS_KEYWORDS = [
@@ -216,28 +218,26 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     [loadChatMessages],
   );
 
-  const generateAIResponse = useCallback((_userInput: string): string => {
-    // Simple CBT-inspired response generator (replace with actual AI integration)
-    const responses = [
-      "I hear that you're going through something difficult. Can you tell me more about what you're feeling right now?",
-      "That sounds challenging. What thoughts are going through your mind when you experience this?",
-      "Thank you for sharing that with me. Let's explore this feeling together. What do you think might be contributing to this?",
-      "I understand this is hard for you. Have you noticed any patterns in when these feelings tend to come up?",
-      "It's brave of you to talk about this. What would you say to a friend who was going through something similar?",
-    ];
-    return responses[Math.floor(Math.random() * responses.length)];
-  }, []);
+  // This function is now replaced by Groq AI streaming
 
   const sendMessage = useCallback(
     async (content: string) => {
       if (!state.currentChatId || !content.trim()) return;
 
+      // Get current user
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        console.error('No user session');
+        return;
+      }
+
       dispatch({ type: "SET_LOADING", payload: true });
+      dispatch({ type: "SET_CONNECTED", payload: true });
 
       // Check for crisis keywords
       if (detectCrisisKeywords(content)) {
         // TODO: Trigger crisis resource modal
-        // Crisis keywords detected - should show crisis resources modal
+        console.warn('Crisis keywords detected');
       }
 
       const userMessage: Message = {
@@ -251,27 +251,57 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       dispatch({ type: "ADD_MESSAGE", payload: userMessage });
       dispatch({ type: "SET_INPUT_TEXT", payload: "" });
 
-      // Simulate AI response (replace with actual WebSocket integration)
-      setTimeout(
-        async () => {
-          const aiResponse: Message = {
-            id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            content: generateAIResponse(content),
-            role: "assistant",
-            timestamp: new Date(),
-            chatId: state.currentChatId!,
-          };
+      // Save user message locally
+      const currentMessages = [...state.messages, userMessage];
+      await saveChatMessages(state.currentChatId, currentMessages);
 
-          dispatch({ type: "ADD_MESSAGE", payload: aiResponse });
+      // Prepare conversation history for AI
+      const conversationHistory = state.messages.slice(-10).map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }));
 
+      // Create placeholder for AI response
+      const aiMessageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      let aiResponseContent = '';
+
+      const aiMessage: Message = {
+        id: aiMessageId,
+        content: '',
+        role: "assistant",
+        timestamp: new Date(),
+        chatId: state.currentChatId,
+      };
+
+      dispatch({ type: "ADD_MESSAGE", payload: aiMessage });
+
+      // Send to Groq AI via Edge Function
+      await sendMessageToAI(
+        content.trim(),
+        state.currentChatId,
+        session.user.id,
+        conversationHistory,
+        // On chunk received
+        (chunk: string) => {
+          aiResponseContent += chunk;
+          // Update message with streaming content
+          dispatch({
+            type: "SET_MESSAGES",
+            payload: [...currentMessages, { ...aiMessage, content: aiResponseContent }]
+          });
+        },
+        // On complete
+        async (fullResponse: string) => {
+          const finalAiMessage = { ...aiMessage, content: fullResponse };
+          
           // Update session with last message info
           const updatedSessions = state.chatSessions.map((session) =>
             session.id === state.currentChatId
               ? {
                   ...session,
-                  lastMessage: aiResponse.content.substring(0, 50) + "...",
+                  lastMessage: fullResponse.substring(0, 50) + "...",
                   lastMessageAt: new Date(),
-                  messageCount: session.messageCount + 2, // user + AI message
+                  messageCount: session.messageCount + 2,
                   title:
                     session.messageCount === 0
                       ? content.substring(0, 30) + "..."
@@ -283,13 +313,27 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           dispatch({ type: "SET_CHAT_SESSIONS", payload: updatedSessions });
           await saveChatSessions(updatedSessions);
 
-          const currentMessages = [...state.messages, userMessage, aiResponse];
-          await saveChatMessages(state.currentChatId!, currentMessages);
+          const finalMessages = [...currentMessages, finalAiMessage];
+          await saveChatMessages(state.currentChatId!, finalMessages);
 
           dispatch({ type: "SET_LOADING", payload: false });
+          dispatch({ type: "SET_CONNECTED", payload: false });
         },
-        1000 + Math.random() * 1500,
-      ); // Simulate network delay
+        // On error
+        (error: Error) => {
+          console.error('AI Error:', error);
+          const errorMessage: Message = {
+            ...aiMessage,
+            content: "I'm sorry, I'm having trouble responding right now. Please try again.",
+          };
+          dispatch({
+            type: "SET_MESSAGES",
+            payload: [...currentMessages, errorMessage]
+          });
+          dispatch({ type: "SET_LOADING", payload: false });
+          dispatch({ type: "SET_CONNECTED", payload: false });
+        }
+      );
     },
     [
       state.currentChatId,
@@ -298,7 +342,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       detectCrisisKeywords,
       saveChatSessions,
       saveChatMessages,
-      generateAIResponse,
     ],
   );
 

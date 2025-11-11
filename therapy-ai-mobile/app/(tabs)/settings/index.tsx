@@ -7,6 +7,7 @@ import {
   Switch,
   StyleSheet,
   Linking,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -104,8 +105,9 @@ export default function SettingsScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(false);
   const [biometricsEnabled, setBiometricsEnabled] = React.useState(false);
   const [loadingNotif, setLoadingNotif] = React.useState(false);
+  const [syncing, setSyncing] = React.useState(false);
   const { theme, isDarkMode, toggleTheme } = useTheme();
-  const { user, signOut } = useAuth();
+  const { user, signOut, syncData } = useAuth();
 
   React.useEffect(() => {
     (async () => {
@@ -233,6 +235,27 @@ export default function SettingsScreen() {
             title="Email"
             description={user?.email || "Not signed in"}
           />
+          {user && (
+            <SettingItem
+              title="Sync to Cloud"
+              description="Backup your data to the cloud"
+              onPress={async () => {
+                setSyncing(true);
+                try {
+                  await syncData();
+                  Alert.alert("Success", "Your data has been synced to the cloud!");
+                } catch (error) {
+                  Alert.alert("Error", "Failed to sync data. Please try again.");
+                } finally {
+                  setSyncing(false);
+                }
+              }}
+              rightComponent={
+                syncing ? <ActivityIndicator size="small" color={theme.colors.primary} /> : null
+              }
+              showArrow={!syncing}
+            />
+          )}
           <SettingItem
             title="Sign Out"
             description="Sign out of your account"
