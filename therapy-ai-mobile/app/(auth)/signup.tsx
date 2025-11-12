@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -9,33 +9,35 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
-import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { router } from "expo-router";
+import { useAuth } from "../../contexts/AuthContext";
+import { useTheme } from "../../contexts/ThemeContext";
+import { TOS_URL, PRIVACY_URL } from "../../constants/legal";
+import { openUrl } from "../../lib/legal";
 
 export default function SignupScreen() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const { signUp } = useAuth();
   const { theme } = useTheme();
 
   const handleSignup = async () => {
     if (!email.trim() || !password.trim() || !confirmPassword.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert("Error", "Please fill in all fields");
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      Alert.alert("Error", "Passwords do not match");
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+      Alert.alert("Error", "Password must be at least 6 characters");
       return;
     }
 
@@ -43,30 +45,21 @@ export default function SignupScreen() {
     try {
       const { error } = await signUp(email.trim(), password);
       if (error) {
-        Alert.alert('Signup Failed', error.message);
-      } else {
-        Alert.alert(
-          'Success',
-          'Account created! Please check your email to verify your account, then sign in.',
-          [
-            {
-              text: 'OK',
-              onPress: () => router.replace('/login'),
-            },
-          ]
-        );
+        Alert.alert("Signup Failed", error.message);
       }
     } catch (error) {
-      Alert.alert('Error', 'An unexpected error occurred');
+      Alert.alert("Error", "An unexpected error occurred");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+    >
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
       >
         <View style={styles.content}>
@@ -74,14 +67,18 @@ export default function SignupScreen() {
             <Text style={[styles.title, { color: theme.colors.text }]}>
               Create Account
             </Text>
-            <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
+            <Text
+              style={[styles.subtitle, { color: theme.colors.textSecondary }]}
+            >
               Join us to start your therapy journey
             </Text>
           </View>
 
           <View style={styles.form}>
             <View style={styles.inputContainer}>
-              <Text style={[styles.label, { color: theme.colors.text }]}>Email</Text>
+              <Text style={[styles.label, { color: theme.colors.text }]}>
+                Email
+              </Text>
               <TextInput
                 style={[
                   styles.input,
@@ -103,7 +100,9 @@ export default function SignupScreen() {
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={[styles.label, { color: theme.colors.text }]}>Password</Text>
+              <Text style={[styles.label, { color: theme.colors.text }]}>
+                Password
+              </Text>
               <TextInput
                 style={[
                   styles.input,
@@ -125,7 +124,9 @@ export default function SignupScreen() {
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={[styles.label, { color: theme.colors.text }]}>Confirm Password</Text>
+              <Text style={[styles.label, { color: theme.colors.text }]}>
+                Confirm Password
+              </Text>
               <TextInput
                 style={[
                   styles.input,
@@ -163,17 +164,45 @@ export default function SignupScreen() {
             </TouchableOpacity>
 
             <View style={styles.footer}>
-              <Text style={[styles.footerText, { color: theme.colors.textSecondary }]}>
-                Already have an account?{' '}
+              <Text
+                style={[
+                  styles.footerText,
+                  { color: theme.colors.textSecondary },
+                ]}
+              >
+                Already have an account?{" "}
               </Text>
               <TouchableOpacity
-                onPress={() => router.push('/login')}
+                onPress={() => router.push("/(auth)/login")}
                 disabled={loading}
               >
                 <Text style={[styles.link, { color: theme.colors.primary }]}>
                   Sign In
                 </Text>
               </TouchableOpacity>
+            </View>
+
+            <View style={styles.legalFooter}>
+              <Text
+                style={[
+                  styles.legalText,
+                  { color: theme.colors.textSecondary },
+                ]}
+              >
+                <Text
+                  style={[styles.legalLink, { color: theme.colors.primary }]}
+                  onPress={() => openUrl(TOS_URL)}
+                >
+                  Terms of Service
+                </Text>
+                {" | "}
+                <Text
+                  style={[styles.legalLink, { color: theme.colors.primary }]}
+                  onPress={() => openUrl(PRIVACY_URL)}
+                >
+                  Privacy Policy
+                </Text>
+              </Text>
             </View>
           </View>
         </View>
@@ -192,30 +221,30 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 20,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   header: {
     marginBottom: 40,
-    alignItems: 'center',
+    alignItems: "center",
   },
   title: {
     fontSize: 32,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    textAlign: 'center',
+    textAlign: "center",
   },
   form: {
-    width: '100%',
+    width: "100%",
   },
   inputContainer: {
     marginBottom: 20,
   },
   label: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
     marginBottom: 8,
   },
   input: {
@@ -228,21 +257,21 @@ const styles = StyleSheet.create({
   button: {
     height: 50,
     borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginTop: 10,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   buttonText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     marginTop: 24,
   },
   footerText: {
@@ -250,7 +279,19 @@ const styles = StyleSheet.create({
   },
   link: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
+  },
+  legalFooter: {
+    marginTop: 20,
+    alignItems: "center",
+  },
+  legalText: {
+    fontSize: 12,
+    textAlign: "center",
+  },
+  legalLink: {
+    fontSize: 12,
+    fontWeight: "600",
+    textDecorationLine: "underline",
   },
 });
-

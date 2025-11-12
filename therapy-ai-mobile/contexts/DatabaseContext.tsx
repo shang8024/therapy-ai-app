@@ -22,7 +22,16 @@ export const DatabaseProvider: React.FC<DatabaseProviderProps> = ({
   const [isInitialized, setIsInitialized] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const currentUserId = user?.id ?? null;
 
+  // Reset initialization when user logs out
+  useEffect(() => {
+    if (!currentUserId) {
+      setIsInitialized(false);
+    }
+  }, [currentUserId]);
+
+  // Initialize database when user is available
   useEffect(() => {
     let cancelled = false;
 

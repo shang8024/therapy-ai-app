@@ -10,7 +10,6 @@ import React, {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Message, ChatSession, ChatContextType } from "../types/chat";
 import { sendMessageToAI } from "../lib/groq-service";
-import { supabase } from "../lib/supabase";
 import { useAuth } from "./AuthContext";
 import {
   getChatSessions as getChatSessionsCloud,
@@ -138,31 +137,35 @@ function mapCloudSession(session: ChatSessionDB): ChatSession {
 export function ChatProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(chatReducer, initialState);
   const { user } = useAuth();
+  const currentUserId = user?.id ?? null;
 
   const getSessionsKey = useCallback(() => {
-    if (!user?.id) return null;
-    return `appv1:${user.id}:chatSessions`;
-  }, [user?.id]);
+    if (!currentUserId) return null;
+    return `appv1:${currentUserId}:chatSessions`;
+  }, [currentUserId]);
 
   const getMessagesKey = useCallback(
     (chatId: string) => {
-      if (!user?.id) return null;
-      return `appv1:${user.id}:messages:${chatId}`;
+      if (!currentUserId) return null;
+      return `appv1:${currentUserId}:messages:${chatId}`;
     },
-    [user?.id],
+    [currentUserId],
   );
 
   useEffect(() => {
-    dispatch({ type: "CLEAR_CURRENT_CHAT" });
-    dispatch({ type: "SET_CHAT_SESSIONS", payload: [] });
-  }, [user?.id]);
+    if (!currentUserId) {
+      dispatch({ type: "CLEAR_CURRENT_CHAT" });
+      dispatch({ type: "SET_CHAT_SESSIONS", payload: [] });
+      dispatch({ type: "SET_MESSAGES", payload: [] });
+    }
+  }, [currentUserId]);
 
   // Load chat sessions from Supabase (fallback to AsyncStorage)
   useEffect(() => {
     const loadChatSessions = async () => {
       let sessions: ChatSession[] | null = null;
       try {
-        if (!user?.id) {
+        if (!currentUserId) {
           dispatch({ type: "SET_CHAT_SESSIONS", payload: [] });
           return;
         }
@@ -171,7 +174,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         if (!storageKey) return;
 
         try {
-          const cloudSessions = await getChatSessionsCloud(user.id);
+          const cloudSessions = await getChatSessionsCloud(currentUserId);
           sessions = cloudSessions.map(mapCloudSession);
           await AsyncStorage.setItem(storageKey, JSON.stringify(sessions));
         } catch (error) {
@@ -200,9 +203,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     };
 
     loadChatSessions();
-  }, [user?.id, getSessionsKey]);
+  }, [currentUserId, getSessionsKey]);
 
   const saveChatSessions = useCallback(async (sessions: ChatSession[]) => {
+    if (!currentUserId) return;
+
     try {
       const storageKey = getSessionsKey();
       if (!storageKey) return;
@@ -211,32 +216,35 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     } catch {
       // Error saving chat sessions - silently handle
     }
-  }, [getSessionsKey]);
+  }, [currentUserId, getSessionsKey]);
 
   const loadChatMessages = useCallback(
     async (chatId: string) => {
+      if (!currentUserId) {
+        dispatch({ type: "SET_MESSAGES", payload: [] });
+        return;
+      }
+
       const storageKey = getMessagesKey(chatId);
 
-      if (user?.id) {
-        try {
-          const cloudMessages = await getMessagesCloud(chatId);
-          const mapped = cloudMessages.map((msg) => ({
-            id: msg.id,
-            chatId: msg.chat_id,
-            content: msg.content,
-            role: msg.role,
-            timestamp: new Date(msg.created_at),
-            audioUri: msg.audio_uri ?? undefined,
-            messageType: msg.message_type ?? "text",
-          }));
-          dispatch({ type: "SET_MESSAGES", payload: mapped });
-          if (storageKey) {
-            await AsyncStorage.setItem(storageKey, JSON.stringify(mapped));
-          }
-          return;
-        } catch (error) {
-          console.warn(`Failed to load messages for chat ${chatId} from Supabase:`, error);
+      try {
+        const cloudMessages = await getMessagesCloud(chatId);
+        const mapped = cloudMessages.map((msg) => ({
+          id: msg.id,
+          chatId: msg.chat_id,
+          content: msg.content,
+          role: msg.role,
+          timestamp: new Date(msg.created_at),
+          audioUri: msg.audio_uri ?? undefined,
+          messageType: msg.message_type ?? "text",
+        }));
+        dispatch({ type: "SET_MESSAGES", payload: mapped });
+        if (storageKey) {
+          await AsyncStorage.setItem(storageKey, JSON.stringify(mapped));
         }
+        return;
+      } catch (error) {
+        console.warn(`Failed to load messages for chat ${chatId} from Supabase:`, error);
       }
 
       if (storageKey) {
@@ -259,11 +267,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
       dispatch({ type: "SET_MESSAGES", payload: [] });
     },
-    [getMessagesKey, user?.id],
+    [currentUserId, getMessagesKey],
   );
 
   const saveChatMessages = useCallback(
     async (chatId: string, messages: Message[]) => {
+      if (!currentUserId) return;
+
       try {
         const storageKey = getMessagesKey(chatId);
         if (!storageKey) return;
@@ -273,7 +283,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         // Error saving messages - silently handle
       }
     },
-    [getMessagesKey],
+    [currentUserId, getMessagesKey],
   );
 
   const detectCrisisKeywords = useCallback((text: string): boolean => {
@@ -323,8 +333,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   const sendMessage = useCallback(
     async (content: string) => {
-      if (!state.currentChatId || !content.trim()) return;
-      if (!user?.id) return;
+      if (!state.currentChatId || !content.trim() || !currentUserId) return;
 
       dispatch({ type: "SET_LOADING", payload: true });
       dispatch({ type: "SET_CONNECTED", payload: true });
@@ -374,7 +383,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       await sendMessageToAI(
         content.trim(),
         state.currentChatId,
-        user.id,
+        currentUserId,
         conversationHistory,
         // On chunk received
         (chunk: string) => {
@@ -447,6 +456,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       state.currentChatId,
       state.chatSessions,
       state.messages,
+      currentUserId,
       detectCrisisKeywords,
       saveChatSessions,
       saveChatMessages,
@@ -533,6 +543,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   const deleteChatSession = useCallback(
     async (chatId: string) => {
+      if (!currentUserId) return;
+
       try {
         dispatch({ type: "DELETE_CHAT_SESSION", payload: chatId });
 
@@ -546,7 +558,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
         const updatedSessions = state.chatSessions.filter((session) => session.id !== chatId);
         await saveChatSessions(updatedSessions);
-
         const messageKey = getMessagesKey(chatId);
         if (messageKey) {
           await AsyncStorage.removeItem(messageKey);
@@ -555,7 +566,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         // Handle error silently or use proper error reporting
       }
     },
-    [getMessagesKey, saveChatSessions, state.chatSessions, user?.id],
+    [currentUserId, getMessagesKey, saveChatSessions, state.chatSessions, user?.id],
   );
 
   const togglePinChatSession = useCallback(

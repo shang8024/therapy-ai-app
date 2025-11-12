@@ -26,14 +26,9 @@ type Counters = {
   checkinLastId: number;
 };
 
-type DatabaseUserContext = {
-  id: string;
-  email: string | null;
-};
-
 class AsyncDatabase {
   private initialized = false;
-  private user: DatabaseUserContext | null = null;
+  private user: { id: string; email: string | null } | null = null;
 
   private static readonly STORAGE_PREFIX = "appv1";
   private static readonly KEYS = {
@@ -52,7 +47,7 @@ class AsyncDatabase {
     "sync:enabled",
   ];
 
-  private ensureUser(): DatabaseUserContext {
+  private ensureUser(): { id: string; email: string | null } {
     if (!this.user) {
       throw new Error("Database user not set");
     }
@@ -124,7 +119,7 @@ class AsyncDatabase {
     return entries.filter((entry) => entry.userId === id);
   }
 
-  setUser(user: DatabaseUserContext | null) {
+  setUser(user: { id: string; email: string | null } | null) {
     const nextId = user?.id ?? null;
     const nextEmail = user?.email ?? null;
     const currentId = this.user?.id ?? null;
@@ -310,13 +305,13 @@ class AsyncDatabase {
     dates: string[];
   }> {
     if (!this.initialized) throw new Error("Database not initialized");
+    const allCheckins = this.filterCheckinEntries(
+      await this.getArray<CheckinEntry>(AsyncDatabase.KEYS.checkinEntries),
+    );
     const endDate = new Date();
     const startDate = new Date();
     startDate.setDate(endDate.getDate() - days + 1);
-
-    const withinRange = this.filterCheckinEntries(
-      await this.getArray<CheckinEntry>(AsyncDatabase.KEYS.checkinEntries),
-    )
+    const withinRange = allCheckins
       .filter(
         (entry) =>
           entry.date >= startDate.toISOString().split("T")[0] && entry.date <= endDate.toISOString().split("T")[0],
@@ -334,7 +329,10 @@ class AsyncDatabase {
       const currentDate = new Date(startDate);
       currentDate.setDate(startDate.getDate() + i);
       const dateString = currentDate.toISOString().split("T")[0];
-      const label = currentDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      const label = currentDate.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      });
       labels.push(label);
       dates.push(dateString);
       data.push(dataMap.get(dateString) || 0);
@@ -384,7 +382,9 @@ class AsyncDatabase {
       return { currentStreak: 0, longestStreak: 0 };
     }
 
-    const sortedCheckins = [...checkins].sort((a, b) => a.date.localeCompare(b.date));
+    const sortedCheckins = [...checkins].sort((a, b) =>
+      a.date.localeCompare(b.date)
+    );
 
     let currentStreak = 0;
     let longestStreak = 0;
@@ -396,7 +396,8 @@ class AsyncDatabase {
     if (todayIndex >= 0) {
       for (let i = todayIndex; i >= 0; i--) {
         const currentDate = new Date(sortedCheckins[i].date);
-        const previousDate = i > 0 ? new Date(sortedCheckins[i - 1].date) : null;
+        const previousDate =
+          i > 0 ? new Date(sortedCheckins[i - 1].date) : null;
         if (i === todayIndex) {
           currentStreak = 1;
         } else if (previousDate) {
@@ -415,7 +416,9 @@ class AsyncDatabase {
     for (let i = 1; i < sortedCheckins.length; i++) {
       const currentDate = new Date(sortedCheckins[i].date);
       const previousDate = new Date(sortedCheckins[i - 1].date);
-      const dayDiff = Math.floor((currentDate.getTime() - previousDate.getTime()) / (1000 * 60 * 60 * 24));
+      const dayDiff = Math.floor(
+        (currentDate.getTime() - previousDate.getTime()) / (1000 * 60 * 60 * 24)
+      );
       if (dayDiff === 1) {
         tempStreak++;
       } else {
@@ -431,5 +434,3 @@ class AsyncDatabase {
 }
 
 export const database = new AsyncDatabase();
-
-
