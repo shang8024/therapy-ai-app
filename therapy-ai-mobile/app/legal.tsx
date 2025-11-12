@@ -14,16 +14,21 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { LEGAL_ACCEPT_KEY, TOS_URL, PRIVACY_URL } from "@/constants/legal";
 import Disclaimer from "@/components/legal/Disclaimer";
-import { NOTIF_PREF_KEY, NOTIF_SCHEDULED_KEY } from "@/constants/notifications";
+import {
+  getNotifPrefKey,
+  getNotifScheduledKey,
+} from "@/constants/notifications";
 import {
   cancelDailyReminders,
   migrateNotificationsIfNeeded,
   getOrRequestNotifPermission,
 } from "@/lib/notifications";
 import { openUrl } from "@/lib/legal";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function LegalScreen() {
   const router = useRouter();
+  const { user } = useAuth();
 
   const [tos, setTos] = React.useState(false);
   const [privacy, setPrivacy] = React.useState(false);
@@ -33,23 +38,26 @@ export default function LegalScreen() {
   const canAgree = tos && privacy;
 
   React.useEffect(() => {
+    if (!user?.id) return;
     (async () => {
       try {
         const [pref, scheduled] = await AsyncStorage.multiGet([
-          NOTIF_PREF_KEY,
-          NOTIF_SCHEDULED_KEY,
+          getNotifPrefKey(user.id),
+          getNotifScheduledKey(user.id),
         ]).then((entries) => entries.map(([, v]) => v));
         if (pref === "true") return setWantsNotif(true);
         if (pref === "false") return setWantsNotif(false);
         setWantsNotif(scheduled === "true");
       } catch {}
     })();
-  }, []);
+  }, [user?.id]);
 
   const onToggleNotif = async (value: boolean) => {
+    if (!user?.id) return;
+
     if (!value) {
       setWantsNotif(false);
-      await AsyncStorage.setItem(NOTIF_PREF_KEY, "false");
+      await AsyncStorage.setItem(getNotifPrefKey(user.id), "false");
       return;
     }
 
@@ -58,10 +66,10 @@ export default function LegalScreen() {
       const res = await getOrRequestNotifPermission();
       if (res === "granted") {
         setWantsNotif(true);
-        await AsyncStorage.setItem(NOTIF_PREF_KEY, "true");
+        await AsyncStorage.setItem(getNotifPrefKey(user.id), "true");
       } else {
         setWantsNotif(false);
-        await AsyncStorage.setItem(NOTIF_PREF_KEY, "false");
+        await AsyncStorage.setItem(getNotifPrefKey(user.id), "false");
         if (res === "blocked" && Platform.OS === "ios") {
           Alert.alert(
             "Notifications Disabled",
@@ -92,13 +100,18 @@ export default function LegalScreen() {
       return;
     }
 
+    if (!user?.id) {
+      Alert.alert("Error", "User not found. Please try again.");
+      return;
+    }
+
     await AsyncStorage.setItem(LEGAL_ACCEPT_KEY, "true");
 
     try {
       if (wantsNotif) {
-        await migrateNotificationsIfNeeded();
+        await migrateNotificationsIfNeeded(user.id);
       } else {
-        await cancelDailyReminders();
+        await cancelDailyReminders(user.id);
       }
     } catch {}
 

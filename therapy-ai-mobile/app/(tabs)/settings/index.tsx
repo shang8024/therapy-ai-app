@@ -17,7 +17,10 @@ import {
   showDataManagement,
 } from "@/lib/legal";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { NOTIF_PREF_KEY, NOTIF_SCHEDULED_KEY } from "@/constants/notifications";
+import {
+  getNotifPrefKey,
+  getNotifScheduledKey,
+} from "@/constants/notifications";
 import {
   cancelDailyReminders,
   ensureDailyReminderSetup,
@@ -110,25 +113,28 @@ export default function SettingsScreen() {
   const { user, signOut, syncData } = useAuth();
 
   React.useEffect(() => {
+    if (!user?.id) return;
     (async () => {
       try {
         const [pref, scheduled] = await AsyncStorage.multiGet([
-          NOTIF_PREF_KEY,
-          NOTIF_SCHEDULED_KEY,
+          getNotifPrefKey(user.id),
+          getNotifScheduledKey(user.id),
         ]).then((es) => es.map(([, v]) => v));
         if (pref === "true") return setNotificationsEnabled(true);
         if (pref === "false") return setNotificationsEnabled(false);
         setNotificationsEnabled(scheduled === "true");
       } catch {}
     })();
-  }, []);
+  }, [user?.id]);
 
   const onToggleNotifications = async (value: boolean) => {
+    if (!user?.id) return;
+
     if (!value) {
       setNotificationsEnabled(false);
-      await AsyncStorage.setItem(NOTIF_PREF_KEY, "false");
+      await AsyncStorage.setItem(getNotifPrefKey(user.id), "false");
       try {
-        await cancelDailyReminders();
+        await cancelDailyReminders(user.id);
       } catch {}
       return;
     }
@@ -138,14 +144,14 @@ export default function SettingsScreen() {
       const res = await getOrRequestNotifPermission();
 
       if (res === "granted") {
-        await AsyncStorage.setItem(NOTIF_PREF_KEY, "true");
-        await ensureDailyReminderSetup();
+        await AsyncStorage.setItem(getNotifPrefKey(user.id), "true");
+        await ensureDailyReminderSetup(user.id);
         setNotificationsEnabled(true);
         return;
       }
 
       setNotificationsEnabled(false);
-      await AsyncStorage.setItem(NOTIF_PREF_KEY, "false");
+      await AsyncStorage.setItem(getNotifPrefKey(user.id), "false");
 
       if (res === "blocked" && Platform.OS === "ios") {
         Alert.alert(

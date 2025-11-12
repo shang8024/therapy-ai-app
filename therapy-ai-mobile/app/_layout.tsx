@@ -9,7 +9,7 @@ import { migrateNotificationsIfNeeded } from "@/lib/notifications";
 import { useAuth } from "@/contexts/AuthContext";
 
 function RootLayoutNav() {
-  const { session, loading: authLoading } = useAuth();
+  const { session, user, loading: authLoading } = useAuth();
   const segments = useSegments();
   const pathname = usePathname();
   const [accepted, setAccepted] = React.useState<boolean | null>(null);
@@ -27,39 +27,29 @@ function RootLayoutNav() {
     })();
   }, []);
 
-  React.useEffect(() => {
-    const sub = Notifications.addNotificationResponseReceivedListener(
-      (resp) => {
-        const target = resp.notification.request.content.data?.target as
-          | string
-          | undefined;
-        if (!target) return;
-        if (accepted && session) router.push(target);
-        else pendingTargetRef.current = target;
-      }
-    );
-    return () => sub.remove();
-  }, [accepted, session]);
+  // Handle notification responses (taps on notifications)
+  const lastNotificationResponse = Notifications.useLastNotificationResponse();
 
   React.useEffect(() => {
-    (async () => {
-      const last = await Notifications.getLastNotificationResponseAsync();
-      const target = last?.notification.request.content.data?.target as
-        | string
-        | undefined;
+    if (lastNotificationResponse) {
+      const target = lastNotificationResponse.notification.request.content.data
+        ?.target as string | undefined;
       if (target) {
-        if (accepted && session) router.push(target);
-        else pendingTargetRef.current = target;
+        if (accepted && session) {
+          router.push(target);
+        } else {
+          pendingTargetRef.current = target;
+        }
       }
-    })();
-  }, [accepted, session]);
+    }
+  }, [lastNotificationResponse, accepted, session]);
 
   React.useEffect(() => {
     if (!bootDone || authLoading) return;
-    if (accepted && session) {
+    if (accepted && session && user?.id) {
       (async () => {
         try {
-          await migrateNotificationsIfNeeded();
+          await migrateNotificationsIfNeeded(user.id);
         } finally {
           const pending = pendingTargetRef.current;
           if (pending && pathname !== pending) {
@@ -69,19 +59,19 @@ function RootLayoutNav() {
         }
       })();
     }
-  }, [bootDone, accepted, pathname, session, authLoading]);
+  }, [bootDone, accepted, pathname, session, user?.id, authLoading]);
 
   // Protect routes - redirect to login if not authenticated
   React.useEffect(() => {
     if (authLoading || !bootDone) return;
 
     const inAuthGroup = segments[0] === "(tabs)" || segments[0] === "index";
-    const isAuthRoute = pathname === "/login" || pathname === "/signup" || pathname === "/legal";
+    const isAuthRoute = segments[0] === "(auth)";
 
     if (!session && inAuthGroup && !isAuthRoute) {
       // Redirect to login if trying to access protected route
-      router.replace("/login");
-    } else if (session && (pathname === "/login" || pathname === "/signup")) {
+      router.replace("/(auth)/login");
+    } else if (session && segments[0] === "(auth)") {
       // Redirect to dashboard if already logged in and trying to access auth routes
       router.replace("/(tabs)/dashboard");
     }

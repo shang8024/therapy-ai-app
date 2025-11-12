@@ -117,7 +117,7 @@ async function clearPendingOperations() {
  */
 export async function syncChatSessionsToCloud(userId: string) {
   try {
-    const localSessions = await AsyncStorage.getItem('appv1:chatSessions');
+    const localSessions = await AsyncStorage.getItem(`appv1:chatSessions:${userId}`);
     if (!localSessions) return;
 
     const sessions = JSON.parse(localSessions);
@@ -126,7 +126,7 @@ export async function syncChatSessionsToCloud(userId: string) {
       await SupabaseService.createChatSession(userId, session.id, session.title);
       
       // Sync messages for this session
-      const messagesKey = `appv1:messages:${session.id}`;
+      const messagesKey = `appv1:messages:${userId}:${session.id}`;
       const localMessages = await AsyncStorage.getItem(messagesKey);
       
       if (localMessages) {
@@ -171,7 +171,7 @@ export async function syncChatSessionsFromCloud(userId: string) {
       pinnedAt: session.pinned_at,
     }));
 
-    await AsyncStorage.setItem('appv1:chatSessions', JSON.stringify(localSessions));
+    await AsyncStorage.setItem(`appv1:chatSessions:${userId}`, JSON.stringify(localSessions));
 
     // Sync messages for each session
     for (const session of cloudSessions) {
@@ -188,7 +188,7 @@ export async function syncChatSessionsFromCloud(userId: string) {
       }));
 
       await AsyncStorage.setItem(
-        `appv1:messages:${session.id}`,
+        `appv1:messages:${userId}:${session.id}`,
         JSON.stringify(localMessages)
       );
     }

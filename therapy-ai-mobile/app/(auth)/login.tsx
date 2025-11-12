@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -9,22 +9,24 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
-import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { router } from "expo-router";
+import { useAuth } from "../../contexts/AuthContext";
+import { useTheme } from "../../contexts/ThemeContext";
+import { TOS_URL, PRIVACY_URL } from "../../constants/legal";
+import { openUrl } from "../../lib/legal";
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const { signIn } = useAuth();
   const { theme } = useTheme();
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert("Error", "Please fill in all fields");
       return;
     }
 
@@ -32,21 +34,21 @@ export default function LoginScreen() {
     try {
       const { error } = await signIn(email.trim(), password);
       if (error) {
-        Alert.alert('Login Failed', error.message);
-      } else {
-        router.replace('/(tabs)/dashboard');
+        Alert.alert("Login Failed", error.message);
       }
     } catch (error) {
-      Alert.alert('Error', 'An unexpected error occurred');
+      Alert.alert("Error", "An unexpected error occurred");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+    >
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
       >
         <View style={styles.content}>
@@ -54,14 +56,18 @@ export default function LoginScreen() {
             <Text style={[styles.title, { color: theme.colors.text }]}>
               Welcome Back
             </Text>
-            <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
+            <Text
+              style={[styles.subtitle, { color: theme.colors.textSecondary }]}
+            >
               Sign in to continue your therapy journey
             </Text>
           </View>
 
           <View style={styles.form}>
             <View style={styles.inputContainer}>
-              <Text style={[styles.label, { color: theme.colors.text }]}>Email</Text>
+              <Text style={[styles.label, { color: theme.colors.text }]}>
+                Email
+              </Text>
               <TextInput
                 style={[
                   styles.input,
@@ -83,7 +89,9 @@ export default function LoginScreen() {
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={[styles.label, { color: theme.colors.text }]}>Password</Text>
+              <Text style={[styles.label, { color: theme.colors.text }]}>
+                Password
+              </Text>
               <TextInput
                 style={[
                   styles.input,
@@ -121,17 +129,45 @@ export default function LoginScreen() {
             </TouchableOpacity>
 
             <View style={styles.footer}>
-              <Text style={[styles.footerText, { color: theme.colors.textSecondary }]}>
-                Don't have an account?{' '}
+              <Text
+                style={[
+                  styles.footerText,
+                  { color: theme.colors.textSecondary },
+                ]}
+              >
+                Don't have an account?{" "}
               </Text>
               <TouchableOpacity
-                onPress={() => router.push('/signup')}
+                onPress={() => router.push("/(auth)/signup")}
                 disabled={loading}
               >
                 <Text style={[styles.link, { color: theme.colors.primary }]}>
                   Sign Up
                 </Text>
               </TouchableOpacity>
+            </View>
+
+            <View style={styles.legalFooter}>
+              <Text
+                style={[
+                  styles.legalText,
+                  { color: theme.colors.textSecondary },
+                ]}
+              >
+                <Text
+                  style={[styles.legalLink, { color: theme.colors.primary }]}
+                  onPress={() => openUrl(TOS_URL)}
+                >
+                  Terms of Service
+                </Text>
+                {" | "}
+                <Text
+                  style={[styles.legalLink, { color: theme.colors.primary }]}
+                  onPress={() => openUrl(PRIVACY_URL)}
+                >
+                  Privacy Policy
+                </Text>
+              </Text>
             </View>
           </View>
         </View>
@@ -150,30 +186,30 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 20,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   header: {
     marginBottom: 40,
-    alignItems: 'center',
+    alignItems: "center",
   },
   title: {
     fontSize: 32,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    textAlign: 'center',
+    textAlign: "center",
   },
   form: {
-    width: '100%',
+    width: "100%",
   },
   inputContainer: {
     marginBottom: 20,
   },
   label: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
     marginBottom: 8,
   },
   input: {
@@ -186,21 +222,21 @@ const styles = StyleSheet.create({
   button: {
     height: 50,
     borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginTop: 10,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   buttonText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     marginTop: 24,
   },
   footerText: {
@@ -208,7 +244,19 @@ const styles = StyleSheet.create({
   },
   link: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
+  },
+  legalFooter: {
+    marginTop: 20,
+    alignItems: "center",
+  },
+  legalText: {
+    fontSize: 12,
+    textAlign: "center",
+  },
+  legalLink: {
+    fontSize: 12,
+    fontWeight: "600",
+    textDecorationLine: "underline",
   },
 });
-

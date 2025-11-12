@@ -10,7 +10,7 @@ import React, {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Message, ChatSession, ChatContextType } from "../types/chat";
 import { sendMessageToAI } from "../lib/groq-service";
-import { supabase } from "../lib/supabase";
+import { useAuth } from "./AuthContext";
 
 // Crisis detection keywords
 const CRISIS_KEYWORDS = [
@@ -115,12 +115,25 @@ const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 export function ChatProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(chatReducer, initialState);
+  const { user } = useAuth();
+  const currentUserId = user?.id || null;
 
-  // Load data from AsyncStorage on mount
+  // Clear state when user logs out
+  useEffect(() => {
+    if (!currentUserId) {
+      dispatch({ type: "SET_CHAT_SESSIONS", payload: [] });
+      dispatch({ type: "SET_MESSAGES", payload: [] });
+      dispatch({ type: "CLEAR_CURRENT_CHAT" });
+    }
+  }, [currentUserId]);
+
+  // Load data from AsyncStorage when user is available
   useEffect(() => {
     const loadChatSessions = async () => {
+      if (!currentUserId) return;
+
       try {
-        const sessionsData = await AsyncStorage.getItem("appv1:chatSessions");
+        const sessionsData = await AsyncStorage.getItem(`appv1:chatSessions:${currentUserId}`);
         if (sessionsData) {
           const sessions: ChatSession[] = JSON.parse(sessionsData).map(
             (session: any) => ({
@@ -139,23 +152,27 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     };
 
     loadChatSessions();
-  }, []); // Empty dependency array - only run once on mount
+  }, [currentUserId]); // Reload when user changes
 
   const saveChatSessions = useCallback(async (sessions: ChatSession[]) => {
+    if (!currentUserId) return;
+
     try {
       await AsyncStorage.setItem(
-        "appv1:chatSessions",
+        `appv1:chatSessions:${currentUserId}`,
         JSON.stringify(sessions),
       );
     } catch {
       // Error saving chat sessions - silently handle
     }
-  }, []);
+  }, [currentUserId]);
 
   const loadChatMessages = useCallback(async (chatId: string) => {
+    if (!currentUserId) return;
+
     try {
       const messagesData = await AsyncStorage.getItem(
-        `appv1:messages:${chatId}`,
+        `appv1:messages:${currentUserId}:${chatId}`,
       );
       if (messagesData) {
         const messages: Message[] = JSON.parse(messagesData).map(
@@ -171,20 +188,22 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     } catch {
       // Error loading messages - silently handle
     }
-  }, []);
+  }, [currentUserId]);
 
   const saveChatMessages = useCallback(
     async (chatId: string, messages: Message[]) => {
+      if (!currentUserId) return;
+
       try {
         await AsyncStorage.setItem(
-          `appv1:messages:${chatId}`,
+          `appv1:messages:${currentUserId}:${chatId}`,
           JSON.stringify(messages),
         );
       } catch {
         // Error saving messages - silently handle
       }
     },
-    [],
+    [currentUserId],
   );
 
   const detectCrisisKeywords = useCallback((text: string): boolean => {
@@ -222,14 +241,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   const sendMessage = useCallback(
     async (content: string) => {
-      if (!state.currentChatId || !content.trim()) return;
-
-      // Get current user
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        console.error('No user session');
-        return;
-      }
+      if (!state.currentChatId || !content.trim() || !currentUserId) return;
 
       dispatch({ type: "SET_LOADING", payload: true });
       dispatch({ type: "SET_CONNECTED", payload: true });
@@ -279,7 +291,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       await sendMessageToAI(
         content.trim(),
         state.currentChatId,
-        session.user.id,
+        currentUserId,
         conversationHistory,
         // On chunk received
         (chunk: string) => {
@@ -339,6 +351,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       state.currentChatId,
       state.chatSessions,
       state.messages,
+      currentUserId,
       detectCrisisKeywords,
       saveChatSessions,
       saveChatMessages,
@@ -423,6 +436,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   const deleteChatSession = useCallback(
     async (chatId: string) => {
+      if (!currentUserId) return;
+
       try {
         dispatch({ type: "DELETE_CHAT_SESSION", payload: chatId });
         
@@ -433,12 +448,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         await saveChatSessions(updatedSessions);
         
         // Remove chat messages
-        await AsyncStorage.removeItem(`appv1:chat:${chatId}`);
+        await AsyncStorage.removeItem(`appv1:messages:${currentUserId}:${chatId}`);
       } catch {
         // Handle error silently or use proper error reporting
       }
     },
-    [state.chatSessions, saveChatSessions],
+    [currentUserId, state.chatSessions, saveChatSessions],
   );
 
   const togglePinChatSession = useCallback(
