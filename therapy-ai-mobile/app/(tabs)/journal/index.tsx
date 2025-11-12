@@ -15,10 +15,18 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { database, JournalEntry } from "../../../utils/database";
 import { useDatabase } from "../../../contexts/DatabaseContext";
+import {
+  createJournalEntry as createJournalEntryCloud,
+  updateJournalEntry as updateJournalEntryCloud,
+  deleteJournalEntry as deleteJournalEntryCloud,
+  getJournalEntries as getJournalEntriesCloud,
+} from "../../../lib/supabase-services";
+import { useAuth } from "../../../contexts/AuthContext";
 
 export default function JournalScreen() {
   const insets = useSafeAreaInsets();
   const { isInitialized, isLoading: dbLoading } = useDatabase();
+  const { user } = useAuth();
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -29,13 +37,34 @@ export default function JournalScreen() {
     if (isInitialized) {
       loadEntries();
     }
-  }, [isInitialized]);
+  }, [isInitialized, user]);
 
   const loadEntries = async () => {
     if (!isInitialized) return;
 
     try {
       setIsLoading(true);
+
+      if (user) {
+        try {
+          const cloudEntries = await getJournalEntriesCloud(user.id);
+          for (const entry of cloudEntries) {
+            await database.createJournalEntry(
+              entry.title,
+              entry.content,
+              entry.id,
+              {
+                createdAt: entry.created_at,
+                updatedAt: entry.updated_at,
+                userEmail: user.email ?? null,
+              }
+            );
+          }
+        } catch (cloudError) {
+          console.warn("Failed to load journal entries from Supabase:", cloudError);
+        }
+      }
+
       const journalEntries = await database.getAllJournalEntries();
       setEntries(journalEntries);
     } catch (error) {
@@ -55,21 +84,84 @@ export default function JournalScreen() {
     try {
       setIsLoading(true);
 
+      let cloudSuccess = false;
+      let cloudId: number | undefined;
+      let cloudCreatedAt: string | undefined;
+      let cloudUpdatedAt: string | undefined;
+
       if (editingEntry) {
         await database.updateJournalEntry(
           editingEntry.id,
           title.trim(),
           content.trim(),
         );
+
+        if (user) {
+          try {
+            await updateJournalEntryCloud(editingEntry.id, title.trim(), content.trim());
+            cloudSuccess = true;
+            cloudId = editingEntry.id;
+          } catch (cloudError) {
+            console.warn("Failed to update journal entry in Supabase:", cloudError);
+          }
+        }
+
         Alert.alert("Success", "Journal entry updated successfully");
       } else {
-        await database.createJournalEntry(title.trim(), content.trim());
+        if (user) {
+          try {
+            const cloudEntry = await createJournalEntryCloud(user.id, title.trim(), content.trim());
+            cloudId = cloudEntry?.id;
+            cloudCreatedAt = cloudEntry?.created_at;
+            cloudUpdatedAt = cloudEntry?.updated_at;
+            cloudSuccess = Boolean(cloudId);
+          } catch (cloudError) {
+            console.warn("Failed to create journal entry in Supabase:", cloudError);
+          }
+        }
+
+        await database.createJournalEntry(
+          title.trim(),
+          content.trim(),
+          cloudId,
+          {
+            createdAt: cloudCreatedAt,
+            updatedAt: cloudUpdatedAt,
+            userEmail: user?.email ?? null,
+          }
+        );
+
+        if (!cloudSuccess) {
+          console.warn("Journal entry saved locally (cloud sync pending).");
+        }
+
         Alert.alert("Success", "Journal entry saved successfully");
       }
 
       setTitle("");
       setContent("");
       setEditingEntry(null);
+
+      if (user && (cloudSuccess || cloudId)) {
+        try {
+          const cloudEntries = await getJournalEntriesCloud(user.id);
+          for (const entry of cloudEntries) {
+            await database.createJournalEntry(
+              entry.title,
+              entry.content,
+              entry.id,
+              {
+                createdAt: entry.created_at,
+                updatedAt: entry.updated_at,
+                userEmail: user.email ?? null,
+              }
+            );
+          }
+        } catch (syncError) {
+          console.warn("Failed to refresh journal entries from Supabase:", syncError);
+        }
+      }
+
       await loadEntries();
     } catch (error) {
       console.error("Failed to save entry:", error);
@@ -97,6 +189,13 @@ export default function JournalScreen() {
           onPress: async () => {
             try {
               await database.deleteJournalEntry(entry.id);
+                  if (user) {
+                    try {
+                      await deleteJournalEntryCloud(entry.id);
+                    } catch (cloudError) {
+                      console.warn("Failed to delete journal entry in Supabase:", cloudError);
+                    }
+                  }
               Alert.alert("Success", "Journal entry deleted successfully");
               await loadEntries();
             } catch (error) {

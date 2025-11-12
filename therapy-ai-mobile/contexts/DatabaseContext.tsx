@@ -1,6 +1,7 @@
 // contexts/DatabaseContext.tsx
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { database } from "../utils/database";
+import { useAuth } from "./AuthContext";
 
 interface DatabaseContextValue {
   isInitialized: boolean;
@@ -17,30 +18,51 @@ interface DatabaseProviderProps {
 export const DatabaseProvider: React.FC<DatabaseProviderProps> = ({
   children,
 }) => {
+  const { user } = useAuth();
   const [isInitialized, setIsInitialized] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     const initializeDatabase = async () => {
+      setIsInitialized(false);
       try {
         setIsLoading(true);
         setError(null);
+        database.setUser(user ? { id: user.id, email: user.email ?? null } : null);
+
+        if (!user) {
+          console.log("Database reset: no authenticated user");
+          return;
+        }
+
         await database.init();
-        setIsInitialized(true);
-        console.log("Database initialized successfully");
+        if (!cancelled) {
+          setIsInitialized(true);
+          console.log(`Database initialized successfully for user ${user.id}`);
+        }
       } catch (err) {
         console.error("Failed to initialize database:", err);
-        setError(
-          err instanceof Error ? err.message : "Failed to initialize database",
-        );
+        if (!cancelled) {
+          setError(
+            err instanceof Error ? err.message : "Failed to initialize database",
+          );
+        }
       } finally {
-        setIsLoading(false);
+        if (!cancelled) {
+          setIsLoading(false);
+        }
       }
     };
 
     initializeDatabase();
-  }, []);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   const value: DatabaseContextValue = {
     isInitialized,
