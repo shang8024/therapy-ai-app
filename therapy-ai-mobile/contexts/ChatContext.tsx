@@ -18,7 +18,6 @@ import {
   updateChatSession as updateChatSessionCloud,
   deleteChatSession as deleteChatSessionCloud,
   getMessages as getMessagesCloud,
-  createMessage as createMessageCloud,
   ChatSessionDB,
 } from "../lib/supabase-services";
 
@@ -351,18 +350,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       const currentMessages = [...state.messages, userMessage];
       await saveChatMessages(state.currentChatId, currentMessages);
 
-      try {
-        await createMessageCloud(
-          user.id,
-          state.currentChatId,
-          userMessage.id,
-          userMessage.content,
-          "user",
-        );
-      } catch (error) {
-        console.warn("Failed to persist user message to Supabase:", error);
-      }
-
       // Prepare conversation history for AI
       const conversationHistory = state.messages.slice(-10).map(msg => ({
         role: msg.role,
@@ -423,18 +410,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
           const finalMessages = [...currentMessages, finalAiMessage];
           await saveChatMessages(state.currentChatId!, finalMessages);
-
-          try {
-            await createMessageCloud(
-              user.id,
-              state.currentChatId!,
-              finalAiMessage.id,
-              finalAiMessage.content,
-              "assistant",
-            );
-          } catch (error) {
-            console.warn("Failed to persist assistant message to Supabase:", error);
-          }
 
           try {
             await updateChatSessionCloud(state.currentChatId!, {
