@@ -30,6 +30,7 @@ import { Platform, Alert } from "react-native";
 import Disclaimer from "@/components/legal/Disclaimer";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { database } from "@/utils/database";
 
 interface SettingItemProps {
   title: string;
@@ -109,6 +110,7 @@ export default function SettingsScreen() {
   const [biometricsEnabled, setBiometricsEnabled] = React.useState(false);
   const [loadingNotif, setLoadingNotif] = React.useState(false);
   const [syncing, setSyncing] = React.useState(false);
+  const [clearingLocal, setClearingLocal] = React.useState(false);
   const { theme, isDarkMode, toggleTheme } = useTheme();
   const { user, signOut, syncData } = useAuth();
 
@@ -172,6 +174,39 @@ export default function SettingsScreen() {
       setLoadingNotif(false);
     }
   };
+
+  const handleClearLocalData = React.useCallback(() => {
+    Alert.alert(
+      "Clear Local Data",
+      "This will remove all cached journal entries, check-ins, and chat history stored on this device for the current account.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Clear",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setClearingLocal(true);
+              if (user) {
+                await database.clearCurrentUserData();
+              } else {
+                await database.clearAllData();
+              }
+              Alert.alert("Success", "Local data cleared successfully.");
+            } catch (error) {
+              console.error("Failed to clear local data:", error);
+              Alert.alert(
+                "Error",
+                "We could not clear local data. Please try again.",
+              );
+            } finally {
+              setClearingLocal(false);
+            }
+          },
+        },
+      ],
+    );
+  }, [user]);
 
   return (
     <SafeAreaView
@@ -282,6 +317,20 @@ export default function SettingsScreen() {
               );
             }}
             showArrow
+          />
+        </SettingSection>
+
+        <SettingSection title="Data Tools">
+          <SettingItem
+            title="Clear Local Data"
+            description="Remove all cached entries stored on this device for this account"
+            onPress={clearingLocal ? undefined : handleClearLocalData}
+            rightComponent={
+              clearingLocal ? (
+                <ActivityIndicator size="small" color={theme.colors.primary} />
+              ) : undefined
+            }
+            showArrow={!clearingLocal}
           />
         </SettingSection>
 

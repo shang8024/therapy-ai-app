@@ -13,11 +13,16 @@ import * as SupabaseService from './supabase-services';
 // SYNC CONFIGURATION
 // ============================================================================
 
+const STORAGE_PREFIX = 'appv1';
 const SYNC_KEYS = {
   lastSyncTime: 'sync:last_sync_time',
   syncEnabled: 'sync:enabled',
   pendingSync: 'sync:pending_operations',
 };
+
+const chatSessionsKey = (userId: string) => `${STORAGE_PREFIX}:${userId}:chatSessions`;
+const chatMessagesKey = (userId: string, chatId: string) =>
+  `${STORAGE_PREFIX}:${userId}:messages:${chatId}`;
 
 interface PendingOperation {
   id: string;
@@ -117,7 +122,7 @@ async function clearPendingOperations() {
  */
 export async function syncChatSessionsToCloud(userId: string) {
   try {
-    const localSessions = await AsyncStorage.getItem(`appv1:chatSessions:${userId}`);
+    const localSessions = await AsyncStorage.getItem(chatSessionsKey(userId));
     if (!localSessions) return;
 
     const sessions = JSON.parse(localSessions);
@@ -126,8 +131,7 @@ export async function syncChatSessionsToCloud(userId: string) {
       await SupabaseService.createChatSession(userId, session.id, session.title);
       
       // Sync messages for this session
-      const messagesKey = `appv1:messages:${userId}:${session.id}`;
-      const localMessages = await AsyncStorage.getItem(messagesKey);
+      const localMessages = await AsyncStorage.getItem(chatMessagesKey(userId, session.id));
       
       if (localMessages) {
         const messages = JSON.parse(localMessages);
@@ -171,7 +175,7 @@ export async function syncChatSessionsFromCloud(userId: string) {
       pinnedAt: session.pinned_at,
     }));
 
-    await AsyncStorage.setItem(`appv1:chatSessions:${userId}`, JSON.stringify(localSessions));
+    await AsyncStorage.setItem(chatSessionsKey(userId), JSON.stringify(localSessions));
 
     // Sync messages for each session
     for (const session of cloudSessions) {
@@ -188,7 +192,7 @@ export async function syncChatSessionsFromCloud(userId: string) {
       }));
 
       await AsyncStorage.setItem(
-        `appv1:messages:${userId}:${session.id}`,
+        chatMessagesKey(userId, session.id),
         JSON.stringify(localMessages)
       );
     }

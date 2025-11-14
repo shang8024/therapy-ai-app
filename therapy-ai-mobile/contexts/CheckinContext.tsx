@@ -11,6 +11,12 @@ import { CheckinRecord } from "../types/checkin";
 import { makeCheckinKey, DEFAULT_MOOD_VALUE } from "../constants/checkin";
 import { database } from "../utils/database";
 import { useDatabase } from "./DatabaseContext";
+import { useAuth } from "./AuthContext";
+import {
+  getCheckinByDate as getCheckinByDateCloud,
+  createCheckin as createCheckinCloud,
+  updateCheckin as updateCheckinCloud,
+} from "../lib/supabase-services";
 
 type Draft = {
   mood: number | null;
@@ -37,6 +43,7 @@ type Props = { children: React.ReactNode };
 
 export const CheckinProvider: React.FC<Props> = ({ children }) => {
   const { isInitialized, isLoading: dbLoading } = useDatabase();
+  const { user } = useAuth();
   const [date] = useState<Date>(() => new Date());
   const key = useMemo(() => makeCheckinKey(date), [date]);
 
@@ -50,23 +57,69 @@ export const CheckinProvider: React.FC<Props> = ({ children }) => {
     if (!isInitialized) return;
 
     setLoading(true);
-    try {
-      const dateString = date.toISOString().split("T")[0]; // YYYY-MM-DD format
-      const dbRecord = await database.getCheckinEntryByDate(dateString);
+    const dateString = date.toISOString().split("T")[0]; // YYYY-MM-DD format
 
-      if (dbRecord) {
-        const checkinRecord: CheckinRecord = {
-          mood: dbRecord.mood,
-          notes: dbRecord.notes || "",
-          timestamp: dbRecord.createdAt,
-        };
-        setRecord(checkinRecord);
-        setDraft({ mood: checkinRecord.mood, notes: checkinRecord.notes });
-        setIsEditing(false);
-      } else {
-        setRecord(null);
-        setDraft({ mood: DEFAULT_MOOD_VALUE, notes: "" });
-        setIsEditing(true);
+    try {
+      let resolved = false;
+
+      if (user?.id) {
+        try {
+          const cloudCheckin = await getCheckinByDateCloud(user.id, dateString);
+          if (cloudCheckin) {
+            resolved = true;
+
+            try {
+              const localExisting = await database.getCheckinEntryByDate(dateString);
+              if (localExisting) {
+                await database.updateCheckinEntry(
+                  localExisting.id,
+                  cloudCheckin.mood,
+                  cloudCheckin.notes ?? null,
+                );
+              } else {
+                await database.createCheckinEntry(
+                  cloudCheckin.mood,
+                  cloudCheckin.notes ?? null,
+                  dateString,
+                );
+              }
+            } catch (syncError) {
+              console.warn("Failed to sync cloud check-in to local storage:", syncError);
+            }
+
+            setRecord({
+              mood: cloudCheckin.mood,
+              notes: cloudCheckin.notes ?? "",
+              timestamp: cloudCheckin.updated_at ?? cloudCheckin.created_at,
+            });
+            setDraft({
+              mood: cloudCheckin.mood,
+              notes: cloudCheckin.notes ?? "",
+            });
+            setIsEditing(false);
+          }
+        } catch (cloudError) {
+          console.warn("Failed to load check-in from Supabase:", cloudError);
+        }
+      }
+
+      if (!resolved) {
+        const dbRecord = await database.getCheckinEntryByDate(dateString);
+
+        if (dbRecord) {
+          const checkinRecord: CheckinRecord = {
+            mood: dbRecord.mood,
+            notes: dbRecord.notes || "",
+            timestamp: dbRecord.createdAt,
+          };
+          setRecord(checkinRecord);
+          setDraft({ mood: checkinRecord.mood, notes: checkinRecord.notes });
+          setIsEditing(false);
+        } else {
+          setRecord(null);
+          setDraft({ mood: DEFAULT_MOOD_VALUE, notes: "" });
+          setIsEditing(true);
+        }
       }
     } catch (error) {
       console.error("Failed to load checkin data:", error);
@@ -76,7 +129,7 @@ export const CheckinProvider: React.FC<Props> = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [isInitialized, date]);
+  }, [date, isInitialized, user]);
 
   useEffect(() => {
     loadToday();
@@ -109,35 +162,50 @@ export const CheckinProvider: React.FC<Props> = ({ children }) => {
     }
 
     const dateString = date.toISOString().split("T")[0]; // YYYY-MM-DD format
-    const payload: CheckinRecord = {
-      mood: draft.mood,
-      notes: draft.notes,
-      timestamp: new Date().toISOString(),
-    };
+    const trimmedNotes = draft.notes.trim();
+    const notesForStorage = trimmedNotes;
+    const notesForSupabase = trimmedNotes.length > 0 ? trimmedNotes : null;
 
     try {
-      // Check if entry already exists for this date
       const existingEntry = await database.getCheckinEntryByDate(dateString);
+      let cloudCheckin:
+        | Awaited<ReturnType<typeof createCheckinCloud>>
+        | Awaited<ReturnType<typeof updateCheckinCloud>>
+        | null = null;
 
-      if (existingEntry) {
-        // Update existing entry
-        await database.updateCheckinEntry(
-          existingEntry.id,
-          draft.mood,
-          draft.notes,
-        );
-      } else {
-        // Create new entry
-        await database.createCheckinEntry(draft.mood, draft.notes, dateString);
+      if (user?.id) {
+        try {
+          const existingCloud = await getCheckinByDateCloud(user.id, dateString);
+          if (existingCloud) {
+            cloudCheckin = await updateCheckinCloud(existingCloud.id, draft.mood, notesForSupabase);
+          } else {
+            cloudCheckin = await createCheckinCloud(user.id, draft.mood, notesForSupabase, dateString);
+          }
+        } catch (cloudError) {
+          console.warn("Failed to persist check-in to Supabase:", cloudError);
+        }
       }
 
+      if (existingEntry) {
+        await database.updateCheckinEntry(existingEntry.id, draft.mood, notesForSupabase);
+      } else {
+        await database.createCheckinEntry(draft.mood, notesForSupabase, dateString);
+      }
+
+      const payload: CheckinRecord = {
+        mood: draft.mood,
+        notes: notesForStorage,
+        timestamp: cloudCheckin?.updated_at ?? new Date().toISOString(),
+      };
+
       setRecord(payload);
+      setDraft({ mood: payload.mood, notes: payload.notes });
       setIsEditing(false);
     } catch (error) {
       console.error("Failed to save checkin data:", error);
       throw error;
     }
-  }, [draft, isInitialized, date]);
+  }, [draft, isInitialized, date, user]);
 
   const value = useMemo<CheckinContextValue>(
     () => ({
