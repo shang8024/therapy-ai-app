@@ -418,6 +418,84 @@ export async function deleteJournalEntry(entryId: number) {
 }
 
 // ============================================================================
+// GLOBAL STATISTICS OPERATIONS
+// ============================================================================
+
+export interface GlobalChatStats {
+  date: string;
+  active_users: number;
+  total_messages: number;
+  avg_messages_per_user: number;
+}
+
+/**
+ * Get global chat statistics for a date range
+ * This aggregates data across all users
+ */
+export async function getGlobalChatStatistics(
+  startDate: string,
+  endDate: string
+): Promise<GlobalChatStats[]> {
+  try {
+    // Query messages grouped by date to get daily statistics
+    // Note: This requires appropriate RLS policies or a database function
+    // For now, we'll query all messages in the date range and aggregate client-side
+    const { data: messages, error: messagesError } = await supabase
+      .from('messages')
+      .select('user_id, created_at')
+      .gte('created_at', startDate)
+      .lte('created_at', endDate);
+
+    if (messagesError) {
+      console.warn('Error fetching global chat statistics:', messagesError);
+      return [];
+    }
+
+    // Aggregate messages by date
+    const statsByDate = new Map<string, {
+      users: Set<string>;
+      messageCount: number;
+    }>();
+
+    messages?.forEach((msg) => {
+      const date = new Date(msg.created_at).toISOString().split('T')[0];
+      if (!statsByDate.has(date)) {
+        statsByDate.set(date, {
+          users: new Set(),
+          messageCount: 0,
+        });
+      }
+      const stats = statsByDate.get(date)!;
+      stats.users.add(msg.user_id);
+      stats.messageCount++;
+    });
+
+    // Convert to array format
+    const result: GlobalChatStats[] = [];
+    statsByDate.forEach((stats, date) => {
+      const activeUsers = stats.users.size;
+      const totalMessages = stats.messageCount;
+      result.push({
+        date,
+        active_users: activeUsers,
+        total_messages: totalMessages,
+        avg_messages_per_user: activeUsers > 0 
+          ? Math.round((totalMessages / activeUsers) * 10) / 10 
+          : 0,
+      });
+    });
+
+    // Sort by date
+    result.sort((a, b) => a.date.localeCompare(b.date));
+
+    return result;
+  } catch (error) {
+    console.error('Error getting global chat statistics:', error);
+    return [];
+  }
+}
+
+// ============================================================================
 // SYNC UTILITIES
 // ============================================================================
 
