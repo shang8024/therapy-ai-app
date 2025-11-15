@@ -22,9 +22,11 @@ import {
   getJournalEntries as getJournalEntriesCloud,
 } from "../../../lib/supabase-services";
 import { useAuth } from "../../../contexts/AuthContext";
+import { useTheme } from "../../../contexts/ThemeContext";
 
 export default function JournalScreen() {
   const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
   const { isInitialized, isLoading: dbLoading } = useDatabase();
   const { user } = useAuth();
   const [entries, setEntries] = useState<JournalEntry[]>([]);
@@ -34,35 +36,36 @@ export default function JournalScreen() {
   const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
 
   useEffect(() => {
-    if (isInitialized) {
+    if (isInitialized && user) {
       loadEntries();
     }
   }, [isInitialized, user]);
 
   const loadEntries = async () => {
-    if (!isInitialized) return;
+    if (!isInitialized || !user) return;
 
     try {
       setIsLoading(true);
 
-      if (user) {
-        try {
-          const cloudEntries = await getJournalEntriesCloud(user.id);
-          for (const entry of cloudEntries) {
-            await database.createJournalEntry(
-              entry.title,
-              entry.content,
-              entry.id,
-              {
-                createdAt: entry.created_at,
-                updatedAt: entry.updated_at,
-                userEmail: user.email ?? null,
-              }
-            );
-          }
-        } catch (cloudError) {
-          console.warn("Failed to load journal entries from Supabase:", cloudError);
+      try {
+        const cloudEntries = await getJournalEntriesCloud(user.id);
+        for (const entry of cloudEntries) {
+          await database.createJournalEntry(
+            entry.title,
+            entry.content,
+            entry.id,
+            {
+              createdAt: entry.created_at,
+              updatedAt: entry.updated_at,
+              userEmail: user.email ?? null,
+            }
+          );
         }
+      } catch (cloudError) {
+        console.warn(
+          "Failed to load journal entries from Supabase:",
+          cloudError
+        );
       }
 
       const journalEntries = await database.getAllJournalEntries();
@@ -93,16 +96,23 @@ export default function JournalScreen() {
         await database.updateJournalEntry(
           editingEntry.id,
           title.trim(),
-          content.trim(),
+          content.trim()
         );
 
         if (user) {
           try {
-            await updateJournalEntryCloud(editingEntry.id, title.trim(), content.trim());
+            await updateJournalEntryCloud(
+              editingEntry.id,
+              title.trim(),
+              content.trim()
+            );
             cloudSuccess = true;
             cloudId = editingEntry.id;
           } catch (cloudError) {
-            console.warn("Failed to update journal entry in Supabase:", cloudError);
+            console.warn(
+              "Failed to update journal entry in Supabase:",
+              cloudError
+            );
           }
         }
 
@@ -110,13 +120,20 @@ export default function JournalScreen() {
       } else {
         if (user) {
           try {
-            const cloudEntry = await createJournalEntryCloud(user.id, title.trim(), content.trim());
+            const cloudEntry = await createJournalEntryCloud(
+              user.id,
+              title.trim(),
+              content.trim()
+            );
             cloudId = cloudEntry?.id;
             cloudCreatedAt = cloudEntry?.created_at;
             cloudUpdatedAt = cloudEntry?.updated_at;
             cloudSuccess = Boolean(cloudId);
           } catch (cloudError) {
-            console.warn("Failed to create journal entry in Supabase:", cloudError);
+            console.warn(
+              "Failed to create journal entry in Supabase:",
+              cloudError
+            );
           }
         }
 
@@ -158,7 +175,10 @@ export default function JournalScreen() {
             );
           }
         } catch (syncError) {
-          console.warn("Failed to refresh journal entries from Supabase:", syncError);
+          console.warn(
+            "Failed to refresh journal entries from Supabase:",
+            syncError
+          );
         }
       }
 
@@ -189,13 +209,16 @@ export default function JournalScreen() {
           onPress: async () => {
             try {
               await database.deleteJournalEntry(entry.id);
-                  if (user) {
-                    try {
-                      await deleteJournalEntryCloud(entry.id);
-                    } catch (cloudError) {
-                      console.warn("Failed to delete journal entry in Supabase:", cloudError);
-                    }
-                  }
+              if (user) {
+                try {
+                  await deleteJournalEntryCloud(entry.id);
+                } catch (cloudError) {
+                  console.warn(
+                    "Failed to delete journal entry in Supabase:",
+                    cloudError
+                  );
+                }
+              }
               Alert.alert("Success", "Journal entry deleted successfully");
               await loadEntries();
             } catch (error) {
@@ -204,7 +227,7 @@ export default function JournalScreen() {
             }
           },
         },
-      ],
+      ]
     );
   };
 
@@ -227,67 +250,142 @@ export default function JournalScreen() {
 
   const renderEntry = ({ item }: { item: JournalEntry }) => {
     return (
-      <View style={styles.entryCard}>
+      <View
+        style={[styles.entryCard, { backgroundColor: theme.colors.surface }]}
+      >
         <View style={styles.entryHeader}>
-          <Text style={styles.entryTitle}>{item.title}</Text>
+          <Text
+            style={[
+              styles.title,
+              styles.entryTitle,
+              { color: theme.colors.text },
+            ]}
+          >
+            {item.title}
+          </Text>
           <View style={styles.entryActions}>
             <TouchableOpacity
-              style={styles.actionButton}
+              style={[
+                styles.smallButton,
+                { backgroundColor: theme.colors.background },
+              ]}
               onPress={() => handleEdit(item)}
             >
-              <Ionicons name="pencil" size={20} color="#007AFF" />
+              <Ionicons name="pencil" size={20} color={theme.colors.primary} />
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.actionButton}
+              style={[
+                styles.smallButton,
+                { backgroundColor: theme.colors.background },
+              ]}
               onPress={() => handleDelete(item)}
             >
-              <Ionicons name="trash" size={20} color="#FF3B30" />
+              <Ionicons name="trash" size={20} color={theme.colors.error} />
             </TouchableOpacity>
           </View>
         </View>
-        <Text style={styles.entryContent} numberOfLines={3}>
+        <Text
+          style={[
+            styles.text,
+            styles.entryContent,
+            { color: theme.colors.text },
+          ]}
+          numberOfLines={3}
+        >
           {item.content}
         </Text>
-        <Text style={styles.entryDate}>{formatDate(item.createdAt)}</Text>
+        <Text style={[styles.entryDate, { color: theme.colors.textSecondary }]}>
+          {formatDate(item.createdAt)}
+        </Text>
       </View>
     );
   };
 
   if (!isInitialized || dbLoading) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View
+        style={[
+          styles.container,
+          { paddingTop: insets.top, backgroundColor: theme.colors.background },
+        ]}
+      >
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={styles.loadingText}>Initializing Journal...</Text>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={[styles.text, { color: theme.colors.textSecondary }]}>
+            Initializing Journal...
+          </Text>
         </View>
       </View>
     );
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View
+      style={[
+        styles.container,
+        { paddingTop: insets.top, backgroundColor: theme.colors.background },
+      ]}
+    >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
       >
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Journal</Text>
-          <Text style={styles.headerSubtitle}>
+        <View
+          style={[
+            styles.header,
+            {
+              backgroundColor: theme.colors.surface,
+              borderBottomColor: theme.colors.border,
+            },
+          ]}
+        >
+          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
+            Journal
+          </Text>
+          <Text
+            style={[
+              styles.headerSubtitle,
+              { color: theme.colors.textSecondary },
+            ]}
+          >
             Write your thoughts and feelings
           </Text>
         </View>
 
-        <View style={styles.inputSection}>
+        <View
+          style={[
+            styles.inputSection,
+            { backgroundColor: theme.colors.surface },
+          ]}
+        >
           <TextInput
-            style={styles.titleInput}
+            style={[
+              styles.input,
+              styles.titleInput,
+              {
+                backgroundColor: theme.colors.background,
+                borderColor: theme.colors.border,
+                color: theme.colors.text,
+              },
+            ]}
             placeholder="Entry title..."
+            placeholderTextColor={theme.colors.textSecondary}
             value={title}
             onChangeText={setTitle}
             maxLength={100}
           />
           <TextInput
-            style={styles.contentInput}
+            style={[
+              styles.input,
+              styles.contentInput,
+              {
+                backgroundColor: theme.colors.background,
+                borderColor: theme.colors.border,
+                color: theme.colors.text,
+              },
+            ]}
             placeholder="Write your thoughts here..."
+            placeholderTextColor={theme.colors.textSecondary}
             value={content}
             onChangeText={setContent}
             multiline
@@ -298,21 +396,32 @@ export default function JournalScreen() {
           <View style={styles.buttonContainer}>
             {editingEntry && (
               <TouchableOpacity
-                style={styles.cancelButton}
+                style={[
+                  styles.button,
+                  styles.cancelButton,
+                  { backgroundColor: theme.colors.surface },
+                ]}
                 onPress={handleCancel}
               >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+                <Text style={[styles.buttonText, { color: theme.colors.text }]}>
+                  Cancel
+                </Text>
               </TouchableOpacity>
             )}
             <TouchableOpacity
-              style={[styles.saveButton, isLoading && styles.disabledButton]}
+              style={[
+                styles.button,
+                styles.saveButton,
+                { backgroundColor: theme.colors.primary },
+                isLoading && styles.disabledButton,
+              ]}
               onPress={handleSave}
               disabled={isLoading}
             >
               {isLoading ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text style={styles.saveButtonText}>
+                <Text style={[styles.buttonText, styles.saveButtonText]}>
                   {editingEntry ? "Update" : "Save"} Entry
                 </Text>
               )}
@@ -322,23 +431,42 @@ export default function JournalScreen() {
 
         <View style={styles.entriesSection}>
           <View style={styles.entriesHeader}>
-            <Text style={styles.entriesTitle}>
+            <Text
+              style={[
+                styles.title,
+                styles.entriesTitle,
+                { color: theme.colors.text },
+              ]}
+            >
               Your Entries ({entries.length})
             </Text>
             <TouchableOpacity
               onPress={loadEntries}
-              style={styles.refreshButton}
+              style={[
+                styles.smallButton,
+                { backgroundColor: theme.colors.surface },
+              ]}
             >
-              <Ionicons name="refresh" size={20} color="#007AFF" />
+              <Ionicons name="refresh" size={20} color={theme.colors.primary} />
             </TouchableOpacity>
           </View>
           {isLoading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color="#007AFF" />
-              <Text style={styles.loadingText}>Loading entries...</Text>
+              <ActivityIndicator size="small" color={theme.colors.primary} />
+              <Text
+                style={[styles.text, { color: theme.colors.textSecondary }]}
+              >
+                Loading entries...
+              </Text>
             </View>
           ) : entries.length === 0 ? (
-            <Text style={styles.emptyText}>
+            <Text
+              style={[
+                styles.text,
+                styles.emptyText,
+                { color: theme.colors.textSecondary },
+              ]}
+            >
               No journal entries yet. Start writing!
             </Text>
           ) : (
@@ -359,7 +487,6 @@ export default function JournalScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8F9FA",
   },
   keyboardView: {
     flex: 1,
@@ -372,22 +499,9 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 20,
-    backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E5E7",
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#1C1C1E",
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    color: "#8E8E93",
   },
   inputSection: {
-    backgroundColor: "#FFFFFF",
     margin: 16,
     padding: 16,
     borderRadius: 12,
@@ -397,57 +511,51 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  titleInput: {
+  input: {
     borderWidth: 1,
-    borderColor: "#E5E5E7",
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
+  },
+  titleInput: {
     marginBottom: 12,
-    backgroundColor: "#F8F9FA",
   },
   contentInput: {
-    borderWidth: 1,
-    borderColor: "#E5E5E7",
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
     height: 100,
     marginBottom: 16,
-    backgroundColor: "#F8F9FA",
   },
   buttonContainer: {
     flexDirection: "row",
     justifyContent: "flex-end",
     gap: 12,
   },
+  button: {
+    borderRadius: 8,
+    alignItems: "center",
+  },
   saveButton: {
-    backgroundColor: "#007AFF",
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 8,
     flexDirection: "row",
-    alignItems: "center",
     gap: 8,
   },
   cancelButton: {
-    backgroundColor: "#8E8E93",
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 8,
+  },
+  smallButton: {
+    padding: 8,
+    borderRadius: 6,
   },
   disabledButton: {
     backgroundColor: "#C7C7CC",
   },
-  saveButtonText: {
-    color: "#FFFFFF",
+  buttonText: {
     fontSize: 16,
     fontWeight: "600",
   },
-  cancelButtonText: {
+  saveButtonText: {
     color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "600",
   },
   entriesSection: {
     flex: 1,
@@ -459,21 +567,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 12,
   },
-  entriesTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-    color: "#1C1C1E",
-  },
-  refreshButton: {
-    padding: 8,
-    borderRadius: 6,
-    backgroundColor: "#F2F2F7",
-  },
   entriesList: {
     paddingBottom: 20,
   },
   entryCard: {
-    backgroundColor: "#FFFFFF",
     padding: 16,
     marginBottom: 12,
     borderRadius: 12,
@@ -489,40 +586,41 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 8,
   },
+  title: {
+    fontWeight: "600",
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: "bold",
+    marginBottom: 4,
+  },
+  entriesTitle: {
+    fontSize: 20,
+  },
   entryTitle: {
     fontSize: 18,
-    fontWeight: "600",
-    color: "#1C1C1E",
     flex: 1,
     marginRight: 12,
+  },
+  text: {
+    fontSize: 16,
+  },
+  headerSubtitle: {
+    fontSize: 16,
   },
   entryActions: {
     flexDirection: "row",
     gap: 8,
   },
-  actionButton: {
-    padding: 8,
-    borderRadius: 6,
-    backgroundColor: "#F2F2F7",
-  },
   entryContent: {
-    fontSize: 16,
-    color: "#3A3A3C",
     lineHeight: 22,
     marginBottom: 8,
   },
   entryDate: {
     fontSize: 14,
-    color: "#8E8E93",
-  },
-  loadingText: {
-    fontSize: 16,
-    color: "#8E8E93",
   },
   emptyText: {
     textAlign: "center",
-    fontSize: 16,
-    color: "#8E8E93",
     marginTop: 40,
     fontStyle: "italic",
   },

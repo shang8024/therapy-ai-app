@@ -1,9 +1,10 @@
 import React from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { prettyDate } from "@/constants/checkin";
 import { useCheckin } from "@/contexts/CheckinContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { checkinStyles } from "@/styles/checkin";
 
 import CheckinRecord from "@/components/checkin/CheckInRecord";
 import CheckinForm from "@/components/checkin/CheckInForm";
@@ -19,12 +20,24 @@ export default function CheckinScreen() {
 
   return (
     <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      style={[
+        checkinStyles.container,
+        { backgroundColor: theme.colors.background },
+      ]}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Daily Check-in</Text>
-          <Text style={styles.subtitle}>{prettyDate(date)}</Text>
+      <ScrollView contentContainerStyle={checkinStyles.scrollContent}>
+        <View style={checkinStyles.header}>
+          <Text style={[checkinStyles.title, { color: theme.colors.text }]}>
+            Daily Check-in
+          </Text>
+          <Text
+            style={[
+              checkinStyles.subtitle,
+              { color: theme.colors.textSecondary },
+            ]}
+          >
+            {prettyDate(date)}
+          </Text>
         </View>
 
         {!isEditing && record ? <CheckinRecord /> : <CheckinForm />}
@@ -32,16 +45,3 @@ export default function CheckinScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f8f9fa" },
-  scrollContent: { padding: 20, paddingBottom: 40 },
-  header: { alignItems: "center", marginBottom: 24 },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#2c3e50",
-    marginBottom: 8,
-  },
-  subtitle: { fontSize: 16, color: "#7f8c8d" },
-});

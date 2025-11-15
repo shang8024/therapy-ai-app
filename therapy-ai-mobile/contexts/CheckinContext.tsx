@@ -54,7 +54,7 @@ export const CheckinProvider: React.FC<Props> = ({ children }) => {
   const [isEditing, setIsEditing] = useState<boolean>(true);
 
   const loadToday = useCallback(async () => {
-    if (!isInitialized) return;
+    if (!isInitialized || !user?.id) return;
 
     setLoading(true);
     const dateString = date.toISOString().split("T")[0]; // YYYY-MM-DD format
@@ -69,22 +69,26 @@ export const CheckinProvider: React.FC<Props> = ({ children }) => {
             resolved = true;
 
             try {
-              const localExisting = await database.getCheckinEntryByDate(dateString);
+              const localExisting =
+                await database.getCheckinEntryByDate(dateString);
               if (localExisting) {
                 await database.updateCheckinEntry(
                   localExisting.id,
                   cloudCheckin.mood,
-                  cloudCheckin.notes ?? null,
+                  cloudCheckin.notes ?? null
                 );
               } else {
                 await database.createCheckinEntry(
                   cloudCheckin.mood,
                   cloudCheckin.notes ?? null,
-                  dateString,
+                  dateString
                 );
               }
             } catch (syncError) {
-              console.warn("Failed to sync cloud check-in to local storage:", syncError);
+              console.warn(
+                "Failed to sync cloud check-in to local storage:",
+                syncError
+              );
             }
 
             setRecord({
@@ -175,11 +179,23 @@ export const CheckinProvider: React.FC<Props> = ({ children }) => {
 
       if (user?.id) {
         try {
-          const existingCloud = await getCheckinByDateCloud(user.id, dateString);
+          const existingCloud = await getCheckinByDateCloud(
+            user.id,
+            dateString
+          );
           if (existingCloud) {
-            cloudCheckin = await updateCheckinCloud(existingCloud.id, draft.mood, notesForSupabase);
+            cloudCheckin = await updateCheckinCloud(
+              existingCloud.id,
+              draft.mood,
+              notesForSupabase
+            );
           } else {
-            cloudCheckin = await createCheckinCloud(user.id, draft.mood, notesForSupabase, dateString);
+            cloudCheckin = await createCheckinCloud(
+              user.id,
+              draft.mood,
+              notesForSupabase,
+              dateString
+            );
           }
         } catch (cloudError) {
           console.warn("Failed to persist check-in to Supabase:", cloudError);
@@ -187,9 +203,17 @@ export const CheckinProvider: React.FC<Props> = ({ children }) => {
       }
 
       if (existingEntry) {
-        await database.updateCheckinEntry(existingEntry.id, draft.mood, notesForSupabase);
+        await database.updateCheckinEntry(
+          existingEntry.id,
+          draft.mood,
+          notesForSupabase
+        );
       } else {
-        await database.createCheckinEntry(draft.mood, notesForSupabase, dateString);
+        await database.createCheckinEntry(
+          draft.mood,
+          notesForSupabase,
+          dateString
+        );
       }
 
       const payload: CheckinRecord = {
@@ -233,7 +257,7 @@ export const CheckinProvider: React.FC<Props> = ({ children }) => {
       startEdit,
       cancelEdit,
       save,
-    ],
+    ]
   );
 
   return (
