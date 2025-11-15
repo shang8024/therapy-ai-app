@@ -142,7 +142,9 @@ export default function LoginScreen() {
                 onPress={() => router.push("/(auth)/signup")}
                 disabled={loading}
               >
-                <Text style={[styles.footerText, styles.link, { color: theme.colors.primary }]}>
+                <Text
+                  style={[styles.footerText, styles.link, { color: "#FFFFFF" }]}
+                >
                   Sign Up
                 </Text>
               </TouchableOpacity>

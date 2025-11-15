@@ -179,11 +179,7 @@ export default function SignupScreen() {
                 disabled={loading}
               >
                 <Text
-                  style={[
-                    styles.footerText,
-                    styles.link,
-                    { color: theme.colors.primary },
-                  ]}
+                  style={[styles.footerText, styles.link, { color: "#FFFFFF" }]}
                 >
                   Sign In
                 </Text>
