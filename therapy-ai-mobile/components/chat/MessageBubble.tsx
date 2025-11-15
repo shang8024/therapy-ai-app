@@ -1,6 +1,12 @@
 // components/chat/MessageBubble.tsx
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, Pressable, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  ActivityIndicator,
+} from "react-native";
 import { Message } from "../../types/chat";
 import { useTheme } from "../../contexts/ThemeContext";
 import AudioPlayer from "./AudioPlayer";
@@ -10,7 +16,10 @@ interface MessageBubbleProps {
   isLatest?: boolean;
 }
 
-export default function MessageBubble({ message, isLatest = false }: MessageBubbleProps) {
+export default function MessageBubble({
+  message,
+  isLatest = false,
+}: MessageBubbleProps) {
   const { theme } = useTheme();
   const isUser = message.role === "user";
   const hasAudio = !!message.audioUri;
@@ -20,7 +29,7 @@ export default function MessageBubble({ message, isLatest = false }: MessageBubb
 
   // Only log once per mount, not on every render
   useEffect(() => {
-    console.log('📨 MessageBubble:', {
+    console.log("📨 MessageBubble:", {
       id: message.id.substring(0, 20),
       role: message.role,
       messageType: message.messageType,
@@ -28,16 +37,33 @@ export default function MessageBubble({ message, isLatest = false }: MessageBubb
     });
   }, [message.id]);
 
-  // User voice message - simple bubble, no transcript
+  // User voice message - show transcribed text with microphone indicator
   if (isUser && isAudioMessage) {
+    // log message content to verify transcription
+    const isTranscriptionError = message.content.includes(
+      "❌ Transcription failed"
+    );
+
     return (
       <View style={[styles.container, styles.userContainer]}>
-        <View style={[styles.bubble, { backgroundColor: theme.colors.primary }]}>
-          {/* Voice message indicator */}
-          <View style={styles.voiceMessageContainer}>
+        <View
+          style={[styles.bubble, { backgroundColor: theme.colors.primary }]}
+        >
+          {/* Voice message indicator with transcribed text */}
+          <View style={styles.voiceMessageHeader}>
             <Text style={styles.voiceIcon}>🎤</Text>
-            <Text style={styles.voiceLabel}>Voice message</Text>
           </View>
+
+          {/* Show actual transcribed text or error */}
+          <Text
+            style={[
+              styles.text,
+              { color: "#ffffff" },
+              isTranscriptionError && styles.errorText,
+            ]}
+          >
+            {message.content}
+          </Text>
 
           <Text style={[styles.timestamp, { color: "rgba(255,255,255,0.7)" }]}>
             {message.timestamp.toLocaleTimeString([], {
@@ -61,7 +87,7 @@ export default function MessageBubble({ message, isLatest = false }: MessageBubb
       <View
         style={[
           styles.bubble,
-          isUser 
+          isUser
             ? { backgroundColor: theme.colors.primary }
             : { backgroundColor: theme.colors.surface },
         ]}
@@ -70,21 +96,31 @@ export default function MessageBubble({ message, isLatest = false }: MessageBubb
         {hasAudio && !isUser ? (
           <>
             <AudioPlayer audioUri={message.audioUri!} autoPlay={isLatest} />
-            
-            <Pressable 
+
+            <Pressable
               onPress={() => setShowTranscript(!showTranscript)}
               style={{ marginTop: 8 }}
             >
-              <Text style={[styles.transcriptToggle, { color: theme.colors.primary }]}>
+              <Text
+                style={[
+                  styles.transcriptToggle,
+                  { color: theme.colors.primary },
+                ]}
+              >
                 {showTranscript ? "Hide transcript ▼" : "Show transcript ▶"}
               </Text>
             </Pressable>
-            
+
             {showTranscript && (
-              <Text style={[styles.transcript, { 
-                color: theme.colors.text,
-                borderTopColor: theme.colors.border 
-              }]}>
+              <Text
+                style={[
+                  styles.transcript,
+                  {
+                    color: theme.colors.text,
+                    borderTopColor: theme.colors.border,
+                  },
+                ]}
+              >
                 {message.content}
               </Text>
             )}
@@ -101,7 +137,16 @@ export default function MessageBubble({ message, isLatest = false }: MessageBubb
           </Text>
         )}
 
-        <Text style={[styles.timestamp, { color: isUser ? "rgba(255,255,255,0.7)" : theme.colors.textSecondary }]}>
+        <Text
+          style={[
+            styles.timestamp,
+            {
+              color: isUser
+                ? "rgba(255,255,255,0.7)"
+                : theme.colors.textSecondary,
+            },
+          ]}
+        >
           {message.timestamp.toLocaleTimeString([], {
             hour: "2-digit",
             minute: "2-digit",
@@ -173,9 +218,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
+  voiceMessageHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+  },
   voiceIcon: {
-    fontSize: 24,
-    marginRight: 12,
+    fontSize: 18,
+    marginRight: 8,
   },
   voiceInfo: {
     flex: 1,
@@ -185,6 +235,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     marginBottom: 4,
+  },
+  errorText: {
+    fontStyle: "italic",
+    opacity: 0.9,
   },
   transcribingContainer: {
     flexDirection: "row",

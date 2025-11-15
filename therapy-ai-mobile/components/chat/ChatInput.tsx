@@ -50,7 +50,7 @@ export default function ChatInput() {
                 /* Could open device settings */
               },
             },
-          ],
+          ]
         );
         return false;
       }
@@ -71,7 +71,7 @@ export default function ChatInput() {
       }
 
       setRecordingState("recording"); // Set state immediately for UI feedback
-      
+
       const hasPermission = await checkMicrophonePermission();
       if (!hasPermission) {
         setRecordingState("idle"); // Reset if permission denied
@@ -85,9 +85,9 @@ export default function ChatInput() {
       });
 
       const { recording: newRecording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY,
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
       );
-      
+
       setRecording(newRecording);
       // Keep recording state as "recording" since we set it earlier
     } catch {
@@ -105,38 +105,52 @@ export default function ChatInput() {
       await recording.stopAndUnloadAsync();
       const uri = recording.getURI();
       setRecording(null);
-      
+
       if (!uri) {
-        throw new Error('No audio URI');
+        throw new Error("No audio URI");
       }
 
       // Transcribe audio to text
       setRecordingState("transcribing");
-      
+
       try {
         const transcribedText = await speechToText(uri);
+        const cleanedText = transcribedText?.trim() || "";
+
+        // Filter out false positives (common noise transcriptions)
+        const falsePositives = ["you", "thank you", ".", "thanks", "um", "uh", "hmm"];
+        const isFalsePositive = falsePositives.includes(cleanedText.toLowerCase());
         
-        if (!transcribedText || transcribedText.trim() === '') {
-          Alert.alert("No Speech Detected", "Please try speaking again.");
+        // Require at least 3 characters for valid transcription (filters out ".", "um", etc.)
+        const isTooShort = cleanedText.length < 3;
+        
+        if (!cleanedText || isFalsePositive || isTooShort) {
+          console.log(`❌ Invalid transcription: "${cleanedText}" (length: ${cleanedText.length})`);
+          Alert.alert(
+            "No Speech Detected", 
+            "Please speak clearly and try again. Recording may have been too short."
+          );
           setRecordingState("idle");
           return;
         }
 
+        console.log(`✅ Valid transcription: "${cleanedText}"`);
+        
         // Send the transcribed text as audio message (shows as voice bubble)
         setRecordingState("idle");
-        await sendMessage(transcribedText, "audio");
-        
+        await sendMessage(cleanedText, "audio");
       } catch (transcriptionError) {
-        console.error('Transcription failed:', transcriptionError);
+        console.error("Transcription failed:", transcriptionError);
+        // Send error message as failed transcription
+        setRecordingState("idle");
+        await sendMessage("❌ Transcription failed", "audio");
         Alert.alert(
-          "Transcription Failed", 
+          "Transcription Failed",
           "Could not convert speech to text. Please try again or type your message."
         );
-        setRecordingState("idle");
       }
-      
     } catch (error) {
-      console.error('Stop recording error:', error);
+      console.error("Stop recording error:", error);
       setRecordingState("idle");
       setRecording(null);
       Alert.alert("Error", "Failed to process recording. Please try again.");
@@ -146,7 +160,7 @@ export default function ChatInput() {
   const handleMicrophonePress = async () => {
     // Prevent rapid tapping
     if (isLoading) return;
-    
+
     if (recordingState === "idle") {
       await startRecording();
     } else if (recordingState === "recording") {
@@ -164,16 +178,26 @@ export default function ChatInput() {
   const showMicButton =
     inputText.trim() === "" &&
     (recordingState === "idle" || recordingState === "recording");
-  const showSendButton =
-    inputText.trim() !== "" && recordingState === "idle";
+  const showSendButton = inputText.trim() !== "" && recordingState === "idle";
   const isTranscribing = recordingState === "transcribing";
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.border }]}>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: theme.colors.surface,
+          borderTopColor: theme.colors.border,
+        },
+      ]}
+    >
       <View
         style={[
           styles.inputContainer,
-          { backgroundColor: theme.colors.background, borderColor: theme.colors.border },
+          {
+            backgroundColor: theme.colors.background,
+            borderColor: theme.colors.border,
+          },
           isFocused && { borderColor: theme.colors.primary },
           recordingState === "recording" && { borderColor: "#ff0000" },
         ]}
@@ -186,8 +210,8 @@ export default function ChatInput() {
             recordingState === "recording"
               ? "Recording..."
               : recordingState === "transcribing"
-              ? "Transcribing..."
-              : "Share what's on your mind..."
+                ? "Transcribing..."
+                : "Share what's on your mind..."
           }
           placeholderTextColor={theme.colors.textSecondary}
           multiline
@@ -196,7 +220,7 @@ export default function ChatInput() {
           onBlur={() => setIsFocused(false)}
           editable={!isLoading && recordingState === "idle"}
         />
-        
+
         {isTranscribing && (
           <View style={styles.micButton}>
             <ActivityIndicator size="small" color={theme.colors.primary} />
@@ -230,7 +254,8 @@ export default function ChatInput() {
             <Text
               style={[
                 styles.sendButtonText,
-                (!inputText.trim() || isLoading) && styles.sendButtonTextDisabled,
+                (!inputText.trim() || isLoading) &&
+                  styles.sendButtonTextDisabled,
               ]}
             >
               {isLoading ? "..." : "Send"}
@@ -238,19 +263,26 @@ export default function ChatInput() {
           </Pressable>
         )}
       </View>
-      
+
       {recordingState === "recording" && (
-        <Text style={[styles.recordingIndicator, { color: theme.colors.textSecondary }]}>
+        <Text
+          style={[
+            styles.recordingIndicator,
+            { color: theme.colors.textSecondary },
+          ]}
+        >
           🔴 Recording... Tap the stop button when finished
         </Text>
       )}
-      
+
       {recordingState === "transcribing" && (
-        <Text style={[styles.recordingIndicator, { color: theme.colors.primary }]}>
+        <Text
+          style={[styles.recordingIndicator, { color: theme.colors.primary }]}
+        >
           Converting speech to text...
         </Text>
       )}
-      
+
       <Text style={styles.disclaimer}>
         This AI companion provides emotional support but is not a replacement
         for professional therapy.
