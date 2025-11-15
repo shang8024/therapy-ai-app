@@ -8,6 +8,8 @@ import React, {
 } from "react";
 import { database } from "../utils/database";
 import { useDatabase } from "./DatabaseContext";
+import { useAuth } from "./AuthContext";
+import { getCheckins } from "../lib/supabase-services";
 
 export interface DashboardStatistics {
   totalCheckins: number;
@@ -28,7 +30,8 @@ type DashboardContextValue = {
   moodTrend30Days: MoodTrendData | null;
   loading: boolean;
   error: string | null;
-  refreshData: () => Promise<void>;
+  refreshData: (syncFirst?: boolean) => Promise<void>;
+  syncFromCloud: () => Promise<void>;
   selectedTimeRange: "7days" | "30days";
   setSelectedTimeRange: (range: "7days" | "30days") => void;
 };
@@ -41,6 +44,7 @@ type Props = { children: React.ReactNode };
 
 export const DashboardProvider: React.FC<Props> = ({ children }) => {
   const { isInitialized, isLoading: dbLoading } = useDatabase();
+  const { user } = useAuth();
 
   const [statistics, setStatistics] = useState<DashboardStatistics | null>(
     null
@@ -57,6 +61,58 @@ export const DashboardProvider: React.FC<Props> = ({ children }) => {
     "7days" | "30days"
   >("7days");
 
+  const syncFromCloud = useCallback(async () => {
+    if (!user?.id || !isInitialized) {
+      // eslint-disable-next-line no-console
+      console.log(
+        "DashboardContext: Cannot sync - user not authenticated or database not initialized"
+      );
+      return;
+    }
+    try {
+      const cloudCheckins = await getCheckins(user.id);
+
+      if (cloudCheckins.length > 0) {
+        for (const cloudCheckin of cloudCheckins) {
+          try {
+            const localExisting = await database.getCheckinEntryByDate(
+              cloudCheckin.date
+            );
+            if (localExisting) {
+              await database.updateCheckinEntry(
+                localExisting.id,
+                cloudCheckin.mood,
+                cloudCheckin.notes ?? null
+              );
+            } else {
+              await database.createCheckinEntry(
+                cloudCheckin.mood,
+                cloudCheckin.notes ?? null,
+                cloudCheckin.date
+              );
+            }
+          } catch (syncError) {
+            // eslint-disable-next-line no-console
+            console.warn(
+              `Failed to sync check-in for date ${cloudCheckin.date}:`,
+              syncError
+            );
+          }
+        }
+
+        // eslint-disable-next-line no-console
+        console.log("DashboardContext: Cloud sync completed successfully");
+      } else {
+        // eslint-disable-next-line no-console
+        console.log("DashboardContext: No check-ins found in cloud");
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("DashboardContext: Failed to sync from cloud:", err);
+      throw err;
+    }
+  }, [user?.id, isInitialized]);
+
   const refreshData = useCallback(async () => {
     if (!isInitialized) return;
 
@@ -64,6 +120,16 @@ export const DashboardProvider: React.FC<Props> = ({ children }) => {
     setError(null);
 
     try {
+      // Sync from cloud first if requested
+      if (user?.id) {
+        try {
+          await syncFromCloud();
+        } catch (syncErr) {
+          // eslint-disable-next-line no-console
+          console.warn("Failed to sync before refresh:", syncErr);
+        }
+      }
+
       // Fetch statistics
       const stats = await database.getCheckinStatistics();
       setStatistics(stats);
@@ -77,6 +143,7 @@ export const DashboardProvider: React.FC<Props> = ({ children }) => {
       setMoodTrend7Days(trend7Days);
       setMoodTrend30Days(trend30Days);
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error("Failed to load dashboard data:", err);
       setError(
         err instanceof Error ? err.message : "Failed to load dashboard data"
@@ -84,7 +151,7 @@ export const DashboardProvider: React.FC<Props> = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [isInitialized]);
+  }, [isInitialized, user?.id, syncFromCloud]);
 
   useEffect(() => {
     refreshData();
@@ -98,6 +165,7 @@ export const DashboardProvider: React.FC<Props> = ({ children }) => {
       loading: loading || dbLoading,
       error,
       refreshData,
+      syncFromCloud,
       selectedTimeRange,
       setSelectedTimeRange,
     }),
@@ -109,6 +177,7 @@ export const DashboardProvider: React.FC<Props> = ({ children }) => {
       dbLoading,
       error,
       refreshData,
+      syncFromCloud,
       selectedTimeRange,
       setSelectedTimeRange,
     ]
