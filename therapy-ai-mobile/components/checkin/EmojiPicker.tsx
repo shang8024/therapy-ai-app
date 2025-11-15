@@ -52,7 +52,7 @@ type AnimatedMoodItemProps = {
   scrollX: SharedValue<number>;
 };
 
-const AnimatedMoodItem: React.FC<AnimatedMoodItemProps> = ({
+export const AnimatedMoodItem: React.FC<AnimatedMoodItemProps> = ({
   item,
   index,
   selected,
@@ -67,7 +67,7 @@ const AnimatedMoodItem: React.FC<AnimatedMoodItemProps> = ({
     if (selected) {
       bump.value = withSequence(
         withSpring(1.08, { mass: 0.6, damping: 10, stiffness: 220 }),
-        withSpring(1.0, { mass: 0.6, damping: 12, stiffness: 220 }),
+        withSpring(1.0, { mass: 0.6, damping: 12, stiffness: 220 })
       );
     } else {
       bump.value = withTiming(1, { duration: 30 });
@@ -83,14 +83,14 @@ const AnimatedMoodItem: React.FC<AnimatedMoodItemProps> = ({
       dist,
       [0, ITEM_WIDTH, ITEM_WIDTH * 2],
       [1.3, 1.0, 0.88],
-      Extrapolation.CLAMP,
+      Extrapolation.CLAMP
     );
 
     const opacity = interpolate(
       dist,
       [0, ITEM_WIDTH * 0.75, ITEM_WIDTH * 2],
       [1.0, 0.6, 0.25],
-      Extrapolation.CLAMP,
+      Extrapolation.CLAMP
     );
 
     return {
@@ -168,10 +168,6 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({
 }) => {
   const listRef = React.useRef<FlatList<MoodLevel>>(null);
 
-  const scrollX = useSharedValue(0);
-  const sidePad = useSharedValue(0);
-  const [layoutW, setLayoutW] = React.useState(0);
-
   const defaultIndex = Math.floor(options.length / 2);
   const selectedIndex = React.useMemo(() => {
     if (selectedValue == null) return defaultIndex;
@@ -179,16 +175,19 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({
     return idx < 0 ? defaultIndex : idx;
   }, [selectedValue, options, defaultIndex]);
 
+  const scrollX = useSharedValue(selectedIndex * SNAP);
+  const sidePad = useSharedValue(0);
+  const [layoutW, setLayoutW] = React.useState(0);
+  const fadeIn = useSharedValue(0);
+
   const onLayout = (e: LayoutChangeEvent) => {
     const w = e.nativeEvent.layout.width;
-    setLayoutW(w);
-    sidePad.value = Math.max((w - ITEM_WIDTH) / 2, 0);
-    requestAnimationFrame(() => {
-      listRef.current?.scrollToIndex?.({
-        index: selectedIndex,
-        animated: false,
-      });
-    });
+    if (layoutW === 0) {
+      setLayoutW(w);
+      sidePad.value = Math.max((w - ITEM_WIDTH) / 2, 0);
+      // Fade in after layout
+      fadeIn.value = withTiming(1, { duration: 300 });
+    }
   };
 
   const onScroll = useAnimatedScrollHandler({
@@ -201,7 +200,7 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({
     const x = e.nativeEvent.contentOffset.x;
     const index = Math.max(
       0,
-      Math.min(options.length - 1, Math.round(x / SNAP)),
+      Math.min(options.length - 1, Math.round(x / SNAP))
     );
     if (index !== selectedIndex) {
       onChange(options[index].value);
@@ -221,43 +220,51 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({
     }
   };
 
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: fadeIn.value,
+  }));
+
   return (
-    <View onLayout={onLayout}>
-      <Animated.FlatList
-        ref={listRef}
-        data={options}
-        keyExtractor={(it) => String(it.value)}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{
-          paddingHorizontal: Math.max((layoutW - ITEM_WIDTH) / 2, 0),
-          paddingVertical: 6,
-        }}
-        ItemSeparatorComponent={() => <View style={{ width: SPACING }} />}
-        snapToInterval={SNAP}
-        decelerationRate="fast"
-        bounces={false}
-        overScrollMode="never"
-        onScroll={onScroll}
-        scrollEventThrottle={16}
-        onMomentumScrollEnd={onMomentumEnd}
-        getItemLayout={(_, index) => ({
-          length: SNAP,
-          offset: SNAP * index,
-          index,
-        })}
-        renderItem={({ item, index }) => (
-          <AnimatedMoodItem
-            item={item}
-            index={index}
-            selected={item.value === selectedValue}
-            onPress={handlePress}
-            sidePad={sidePad}
-            layoutW={layoutW}
-            scrollX={scrollX}
-          />
-        )}
-      />
+    <View onLayout={onLayout} style={{ minHeight: 200 }}>
+      {layoutW > 0 && (
+        <Animated.FlatList
+          ref={listRef}
+          data={options}
+          keyExtractor={(it) => String(it.value)}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          initialScrollIndex={selectedIndex}
+          style={animatedStyle}
+          contentContainerStyle={{
+            paddingHorizontal: Math.max((layoutW - ITEM_WIDTH) / 2, 0),
+            paddingVertical: 6,
+          }}
+          ItemSeparatorComponent={() => <View style={{ width: SPACING }} />}
+          snapToInterval={SNAP}
+          decelerationRate="fast"
+          bounces={false}
+          overScrollMode="never"
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+          onMomentumScrollEnd={onMomentumEnd}
+          getItemLayout={(_, index) => ({
+            length: SNAP,
+            offset: SNAP * index,
+            index,
+          })}
+          renderItem={({ item, index }) => (
+            <AnimatedMoodItem
+              item={item}
+              index={index}
+              selected={item.value === selectedValue}
+              onPress={handlePress}
+              sidePad={sidePad}
+              layoutW={layoutW}
+              scrollX={scrollX}
+            />
+          )}
+        />
+      )}
     </View>
   );
 };

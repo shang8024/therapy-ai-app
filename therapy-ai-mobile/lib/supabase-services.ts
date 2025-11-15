@@ -1,11 +1,50 @@
 /**
  * Supabase Service Layer
- * 
+ *
  * This file contains all Supabase database operations.
  * Handles cloud sync for chat sessions, messages, check-ins, and journal entries.
  */
 
-import { supabase } from './supabase';
+import { supabase } from "./supabase";
+import { AuthError } from "@supabase/supabase-js";
+
+// ============================================================================
+// ERROR HANDLING UTILITIES
+// ============================================================================
+
+/**
+ * Check if error is an authentication error that requires re-login
+ */
+function isAuthError(error: any): boolean {
+  return (
+    error instanceof AuthError ||
+    error?.message?.includes("Refresh Token") ||
+    error?.message?.includes("JWT") ||
+    error?.message?.includes("not authenticated")
+  );
+}
+
+/**
+ * Handle Supabase errors gracefully
+ */
+export async function handleSupabaseError(
+  error: any,
+  operation: string
+): Promise<never> {
+  console.error(`Supabase ${operation} error:`, error);
+
+  if (isAuthError(error)) {
+    // Sign out user on auth errors
+    try {
+      await supabase.auth.signOut();
+    } catch (signOutError) {
+      console.error("Error during sign out:", signOutError);
+    }
+    throw new Error("Session expired. Please sign in again.");
+  }
+
+  throw error;
+}
 
 // ============================================================================
 // USER PROFILE OPERATIONS
@@ -16,7 +55,7 @@ export interface UserProfile {
   email: string | null;
   display_name: string | null;
   avatar_url: string | null;
-  theme_preference: 'light' | 'dark' | 'system';
+  theme_preference: "light" | "dark" | "system";
   reminder_time: string;
   notification_enabled: boolean;
   created_at: string;
@@ -26,15 +65,19 @@ export interface UserProfile {
 /**
  * Get user profile by ID
  */
-export async function getUserProfile(userId: string) {
-  const { data, error } = await supabase
-    .from('user_profiles')
-    .select('*')
-    .eq('id', userId)
-    .single();
+export async function getUserProfile(userId: string): Promise<UserProfile> {
+  try {
+    const { data, error } = await supabase
+      .from("user_profiles")
+      .select("*")
+      .eq("id", userId)
+      .single();
 
-  if (error) throw error;
-  return data as UserProfile;
+    if (error) throw error;
+    return data as UserProfile;
+  } catch (error) {
+    return await handleSupabaseError(error, "getUserProfile");
+  }
 }
 
 /**
@@ -42,13 +85,13 @@ export async function getUserProfile(userId: string) {
  */
 export async function createUserProfile(userId: string, email: string) {
   const { data, error } = await supabase
-    .from('user_profiles')
+    .from("user_profiles")
     .insert({
       id: userId,
       email,
-      display_name: email.split('@')[0], // Default to email username
-      theme_preference: 'light',
-      reminder_time: '20:00:00',
+      display_name: email.split("@")[0], // Default to email username
+      theme_preference: "light",
+      reminder_time: "20:00:00",
       notification_enabled: true,
     })
     .select()
@@ -63,12 +106,12 @@ export async function createUserProfile(userId: string, email: string) {
  */
 export async function updateUserProfile(
   userId: string,
-  updates: Partial<Omit<UserProfile, 'id' | 'created_at' | 'updated_at'>>
+  updates: Partial<Omit<UserProfile, "id" | "created_at" | "updated_at">>
 ) {
   const { data, error } = await supabase
-    .from('user_profiles')
+    .from("user_profiles")
     .update(updates)
-    .eq('id', userId)
+    .eq("id", userId)
     .select()
     .single();
 
@@ -98,10 +141,10 @@ export interface ChatSessionDB {
  */
 export async function getChatSessions(userId: string) {
   const { data, error } = await supabase
-    .from('chat_sessions')
-    .select('*')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false });
+    .from("chat_sessions")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
 
   if (error) throw error;
   return data as ChatSessionDB[];
@@ -110,9 +153,13 @@ export async function getChatSessions(userId: string) {
 /**
  * Create a new chat session
  */
-export async function createChatSession(userId: string, sessionId: string, title: string = 'New Conversation') {
+export async function createChatSession(
+  userId: string,
+  sessionId: string,
+  title: string = "New Conversation"
+) {
   const { data, error } = await supabase
-    .from('chat_sessions')
+    .from("chat_sessions")
     .insert({
       id: sessionId,
       user_id: userId,
@@ -132,12 +179,14 @@ export async function createChatSession(userId: string, sessionId: string, title
  */
 export async function updateChatSession(
   sessionId: string,
-  updates: Partial<Omit<ChatSessionDB, 'id' | 'user_id' | 'created_at' | 'updated_at'>>
+  updates: Partial<
+    Omit<ChatSessionDB, "id" | "user_id" | "created_at" | "updated_at">
+  >
 ) {
   const { data, error } = await supabase
-    .from('chat_sessions')
+    .from("chat_sessions")
     .update(updates)
-    .eq('id', sessionId)
+    .eq("id", sessionId)
     .select()
     .single();
 
@@ -150,9 +199,9 @@ export async function updateChatSession(
  */
 export async function deleteChatSession(sessionId: string) {
   const { error } = await supabase
-    .from('chat_sessions')
+    .from("chat_sessions")
     .delete()
-    .eq('id', sessionId);
+    .eq("id", sessionId);
 
   if (error) throw error;
 }
@@ -160,7 +209,10 @@ export async function deleteChatSession(sessionId: string) {
 /**
  * Toggle pin status for chat session
  */
-export async function togglePinChatSession(sessionId: string, isPinned: boolean) {
+export async function togglePinChatSession(
+  sessionId: string,
+  isPinned: boolean
+) {
   const updates: Partial<ChatSessionDB> = {
     is_pinned: isPinned,
     pinned_at: isPinned ? new Date().toISOString() : null,
@@ -178,8 +230,8 @@ export interface MessageDB {
   chat_id: string;
   user_id: string;
   content: string;
-  role: 'user' | 'assistant';
-  message_type: 'text' | 'audio';
+  role: "user" | "assistant";
+  message_type: "text" | "audio";
   audio_uri: string | null;
   metadata: Record<string, any>;
   created_at: string;
@@ -190,10 +242,10 @@ export interface MessageDB {
  */
 export async function getMessages(chatId: string) {
   const { data, error } = await supabase
-    .from('messages')
-    .select('*')
-    .eq('chat_id', chatId)
-    .order('created_at', { ascending: true });
+    .from("messages")
+    .select("*")
+    .eq("chat_id", chatId)
+    .order("created_at", { ascending: true });
 
   if (error) throw error;
   return data as MessageDB[];
@@ -207,12 +259,12 @@ export async function createMessage(
   chatId: string,
   messageId: string,
   content: string,
-  role: 'user' | 'assistant',
-  messageType: 'text' | 'audio' = 'text',
+  role: "user" | "assistant",
+  messageType: "text" | "audio" = "text",
   audioUri: string | null = null
 ) {
   const { data, error } = await supabase
-    .from('messages')
+    .from("messages")
     .insert({
       id: messageId,
       chat_id: chatId,
@@ -235,9 +287,9 @@ export async function createMessage(
  */
 export async function deleteMessages(chatId: string) {
   const { error } = await supabase
-    .from('messages')
+    .from("messages")
     .delete()
-    .eq('chat_id', chatId);
+    .eq("chat_id", chatId);
 
   if (error) throw error;
 }
@@ -261,10 +313,10 @@ export interface CheckinDB {
  */
 export async function getCheckins(userId: string) {
   const { data, error } = await supabase
-    .from('checkins')
-    .select('*')
-    .eq('user_id', userId)
-    .order('date', { ascending: false });
+    .from("checkins")
+    .select("*")
+    .eq("user_id", userId)
+    .order("date", { ascending: false });
 
   if (error) throw error;
   return data as CheckinDB[];
@@ -275,10 +327,10 @@ export async function getCheckins(userId: string) {
  */
 export async function getCheckinByDate(userId: string, date: string) {
   const { data, error } = await supabase
-    .from('checkins')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('date', date)
+    .from("checkins")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("date", date)
     .maybeSingle();
 
   if (error) throw error;
@@ -288,9 +340,14 @@ export async function getCheckinByDate(userId: string, date: string) {
 /**
  * Create check-in
  */
-export async function createCheckin(userId: string, mood: number, notes: string | null, date: string) {
+export async function createCheckin(
+  userId: string,
+  mood: number,
+  notes: string | null,
+  date: string
+) {
   const { data, error } = await supabase
-    .from('checkins')
+    .from("checkins")
     .insert({
       user_id: userId,
       mood,
@@ -307,11 +364,15 @@ export async function createCheckin(userId: string, mood: number, notes: string 
 /**
  * Update check-in
  */
-export async function updateCheckin(checkinId: number, mood: number, notes: string | null) {
+export async function updateCheckin(
+  checkinId: number,
+  mood: number,
+  notes: string | null
+) {
   const { data, error } = await supabase
-    .from('checkins')
+    .from("checkins")
     .update({ mood, notes })
-    .eq('id', checkinId)
+    .eq("id", checkinId)
     .select()
     .single();
 
@@ -324,9 +385,9 @@ export async function updateCheckin(checkinId: number, mood: number, notes: stri
  */
 export async function deleteCheckin(checkinId: number) {
   const { error } = await supabase
-    .from('checkins')
+    .from("checkins")
     .delete()
-    .eq('id', checkinId);
+    .eq("id", checkinId);
 
   if (error) throw error;
 }
@@ -349,10 +410,10 @@ export interface JournalEntryDB {
  */
 export async function getJournalEntries(userId: string) {
   const { data, error } = await supabase
-    .from('journal_entries')
-    .select('*')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false });
+    .from("journal_entries")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
 
   if (error) throw error;
   return data as JournalEntryDB[];
@@ -363,9 +424,9 @@ export async function getJournalEntries(userId: string) {
  */
 export async function getJournalEntry(entryId: number) {
   const { data, error } = await supabase
-    .from('journal_entries')
-    .select('*')
-    .eq('id', entryId)
+    .from("journal_entries")
+    .select("*")
+    .eq("id", entryId)
     .single();
 
   if (error) throw error;
@@ -375,9 +436,13 @@ export async function getJournalEntry(entryId: number) {
 /**
  * Create journal entry
  */
-export async function createJournalEntry(userId: string, title: string, content: string) {
+export async function createJournalEntry(
+  userId: string,
+  title: string,
+  content: string
+) {
   const { data, error } = await supabase
-    .from('journal_entries')
+    .from("journal_entries")
     .insert({
       user_id: userId,
       title,
@@ -393,11 +458,15 @@ export async function createJournalEntry(userId: string, title: string, content:
 /**
  * Update journal entry
  */
-export async function updateJournalEntry(entryId: number, title: string, content: string) {
+export async function updateJournalEntry(
+  entryId: number,
+  title: string,
+  content: string
+) {
   const { data, error } = await supabase
-    .from('journal_entries')
+    .from("journal_entries")
     .update({ title, content })
-    .eq('id', entryId)
+    .eq("id", entryId)
     .select()
     .single();
 
@@ -410,9 +479,9 @@ export async function updateJournalEntry(entryId: number, title: string, content
  */
 export async function deleteJournalEntry(entryId: number) {
   const { error } = await supabase
-    .from('journal_entries')
+    .from("journal_entries")
     .delete()
-    .eq('id', entryId);
+    .eq("id", entryId);
 
   if (error) throw error;
 }
@@ -434,7 +503,8 @@ export function isOnline(): boolean {
  * Get current user ID
  */
 export async function getCurrentUserId(): Promise<string | null> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   return session?.user?.id ?? null;
 }
-

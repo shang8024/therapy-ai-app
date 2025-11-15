@@ -114,20 +114,18 @@ export const DashboardProvider: React.FC<Props> = ({ children }) => {
   }, [user?.id, isInitialized]);
 
   const refreshData = useCallback(async () => {
-    if (!isInitialized) return;
+    if (!isInitialized || !user?.id) return;
 
     setLoading(true);
     setError(null);
 
     try {
       // Sync from cloud first if requested
-      if (user?.id) {
-        try {
-          await syncFromCloud();
-        } catch (syncErr) {
-          // eslint-disable-next-line no-console
-          console.warn("Failed to sync before refresh:", syncErr);
-        }
+      try {
+        await syncFromCloud();
+      } catch (syncErr) {
+        // eslint-disable-next-line no-console
+        console.warn("Failed to sync before refresh:", syncErr);
       }
 
       // Fetch statistics

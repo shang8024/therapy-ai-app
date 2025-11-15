@@ -15,45 +15,67 @@ import { useChat } from "../../../contexts/ChatContext";
 import { useTheme } from "../../../contexts/ThemeContext";
 import MessageBubble from "../../../components/chat/MessageBubble";
 import ChatInput from "../../../components/chat/ChatInput";
+import { chatStyles } from "@/styles/chat";
 
 // Crisis Resources Modal Component
 function CrisisResourcesModal({
   visible,
   onClose,
+  theme,
 }: {
   visible: boolean;
   onClose: () => void;
+  theme: any;
 }) {
   return (
     <Modal visible={visible} animationType="slide" transparent>
       <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Crisis Resources</Text>
-          <Text style={styles.modalSubtitle}>
+        <View
+          style={[
+            styles.modalContent,
+            { backgroundColor: theme.colors.surface },
+          ]}
+        >
+          <Text style={[styles.modalTitle, { color: theme.colors.error }]}>
+            Crisis Resources
+          </Text>
+          <Text style={[styles.modalSubtitle, { color: theme.colors.text }]}>
             If you're having thoughts of self-harm or suicide, please reach out
             for immediate help:
           </Text>
 
           <View style={styles.resourcesList}>
-            <Text style={styles.resourceItem}>
+            <Text style={[styles.resourceItem, { color: theme.colors.text }]}>
               🇺🇸 National Suicide Prevention Lifeline: 988
             </Text>
-            <Text style={styles.resourceItem}>
+            <Text style={[styles.resourceItem, { color: theme.colors.text }]}>
               🇨🇦 Canada Suicide Prevention Service: 1-833-456-4566
             </Text>
-            <Text style={styles.resourceItem}>🇬🇧 Samaritans: 116 123</Text>
-            <Text style={styles.resourceItem}>
+            <Text style={[styles.resourceItem, { color: theme.colors.text }]}>
+              🇬🇧 Samaritans: 116 123
+            </Text>
+            <Text style={[styles.resourceItem, { color: theme.colors.text }]}>
               🌍 Crisis Text Line: Text HOME to 741741
             </Text>
           </View>
 
-          <Text style={styles.modalNote}>
+          <Text
+            style={[styles.modalNote, { color: theme.colors.textSecondary }]}
+          >
             These resources are available 24/7. You are not alone, and help is
             available.
           </Text>
 
-          <Pressable style={styles.modalCloseButton} onPress={onClose}>
-            <Text style={styles.modalCloseText}>Close</Text>
+          <Pressable
+            style={[
+              styles.modalCloseButton,
+              { backgroundColor: theme.colors.primary },
+            ]}
+            onPress={onClose}
+          >
+            <Text style={[styles.buttonText, styles.modalCloseText]}>
+              Close
+            </Text>
           </Pressable>
         </View>
       </View>
@@ -82,7 +104,7 @@ export default function ChatSessionScreen() {
     if (messages.length > previousMessageCountRef.current) {
       // New message was added
       const lastMessage = messages[messages.length - 1];
-      if (lastMessage.role === 'assistant' && lastMessage.audioUri) {
+      if (lastMessage.role === "assistant" && lastMessage.audioUri) {
         setLastNewMessageId(lastMessage.id);
         // Clear after a short delay to prevent re-playing on re-renders
         setTimeout(() => setLastNewMessageId(null), 1000);
@@ -114,14 +136,28 @@ export default function ChatSessionScreen() {
   const renderMessage = ({ item, index }: { item: any; index: number }) => {
     // Only auto-play if this is the newly generated message
     const isLatest = item.id === lastNewMessageId;
-    
+
     return <MessageBubble message={item} isLatest={isLatest} />;
   };
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <Text style={[styles.emptyStateTitle, { color: theme.colors.text }]}>Start the conversation</Text>
-      <Text style={[styles.emptyStateSubtitle, { color: theme.colors.textSecondary }]}>
+      <Text
+        style={[
+          styles.emptyTitle,
+          styles.emptyTitleChat,
+          { color: theme.colors.text },
+        ]}
+      >
+        Start the conversation
+      </Text>
+      <Text
+        style={[
+          styles.emptySubtitle,
+          styles.emptySubtitleChat,
+          { color: theme.colors.textSecondary },
+        ]}
+      >
         Share what's on your mind. Your AI companion is here to listen and
         provide gentle guidance.
       </Text>
@@ -130,35 +166,59 @@ export default function ChatSessionScreen() {
 
   if (!currentChatId || currentChatId !== chatId) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <View style={styles.loadingContainer}>
-          <Text style={[styles.loadingText, { color: theme.colors.text }]}>Loading conversation...</Text>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+      >
+        <View style={styles.emptyState}>
+          <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>
+            Loading conversation...
+          </Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      edges={["top"]}
+    >
       {/* Crisis Resources Modal */}
       <CrisisResourcesModal
         visible={showCrisisModal}
         onClose={() => setShowCrisisModal(false)}
+        theme={theme}
       />
 
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
+      <View
+        style={[
+          styles.header,
+          {
+            borderBottomColor: theme.colors.border,
+          },
+        ]}
+      >
         <Pressable style={styles.backButton} onPress={handleBackPress}>
-          <Text style={[styles.backButtonText, { color: theme.colors.primary }]}>← Back</Text>
+          <Text
+            style={[styles.backButtonText, { color: theme.colors.primary }]}
+          >
+            ← Back
+          </Text>
         </Pressable>
-        <Text style={[styles.headerTitle, { color: theme.colors.text }]} numberOfLines={1}>
+        <Text
+          style={[styles.headerTitle, { color: theme.colors.text }]}
+          numberOfLines={1}
+        >
           {currentSession?.title || "Chat"}
         </Text>
         <Pressable
-          style={[styles.crisisButton, { backgroundColor: theme.colors.error }]}
+          style={[styles.buttonSmall, { backgroundColor: theme.colors.error }]}
           onPress={() => setShowCrisisModal(true)}
         >
-          <Text style={styles.crisisButtonText}>Crisis Help</Text>
+          <Text style={[styles.buttonText, { color: "#FFFFFF" }]}>
+            Crisis Help
+          </Text>
         </Pressable>
       </View>
 
@@ -184,53 +244,22 @@ export default function ChatSessionScreen() {
         {/* Chat Input */}
         <ChatInput />
       </KeyboardAvoidingView>
-
-      
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  ...chatStyles,
+  headerTitle: {
+    ...chatStyles.headerTitle,
     flex: 1,
-    backgroundColor: "#F8F9FA",
-    marginBottom: -40,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: "white",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E0E0E0",
+    marginHorizontal: 16,
   },
   backButton: {
     paddingVertical: 4,
   },
   backButtonText: {
-    color: "#007AFF",
     fontSize: 16,
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#333333",
-    textAlign: "center",
-    marginHorizontal: 16,
-  },
-  crisisButton: {
-    backgroundColor: "#FF3B30",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  crisisButtonText: {
-    color: "white",
-    fontSize: 12,
-    fontWeight: "600",
   },
   keyboardAvoidingView: {
     flex: 1,
@@ -243,44 +272,12 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
   },
-  emptyState: {
-    alignItems: "center",
-    paddingHorizontal: 32,
+  emptyTitleChat: {
+    fontSize: 28,
+    marginBottom: 16,
   },
-  emptyStateTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#333333",
-    marginBottom: 8,
-    textAlign: "center",
-  },
-  emptyStateSubtitle: {
-    fontSize: 16,
-    color: "#666666",
-    textAlign: "center",
-    lineHeight: 22,
-  },
-  disclaimerContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: "#FFF9E6",
-    borderTopWidth: 1,
-    borderTopColor: "#E0E0E0",
-  },
-  disclaimerText: {
-    fontSize: 12,
-    color: "#8B7355",
-    textAlign: "center",
-    fontStyle: "italic",
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingText: {
-    fontSize: 16,
-    color: "#666666",
+  emptySubtitleChat: {
+    marginBottom: 32,
   },
   // Modal Styles
   modalOverlay: {
@@ -306,13 +303,11 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: "bold",
-    color: "#FF3B30",
     textAlign: "center",
     marginBottom: 12,
   },
   modalSubtitle: {
     fontSize: 16,
-    color: "#333333",
     textAlign: "center",
     marginBottom: 20,
     lineHeight: 22,
@@ -322,20 +317,17 @@ const styles = StyleSheet.create({
   },
   resourceItem: {
     fontSize: 14,
-    color: "#333333",
     marginBottom: 8,
     lineHeight: 20,
   },
   modalNote: {
     fontSize: 14,
-    color: "#666666",
     textAlign: "center",
     fontStyle: "italic",
     marginBottom: 20,
     lineHeight: 20,
   },
   modalCloseButton: {
-    backgroundColor: "#007AFF",
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,

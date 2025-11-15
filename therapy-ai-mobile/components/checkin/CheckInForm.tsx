@@ -1,18 +1,14 @@
 import React from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-} from "react-native";
+import { View, Text, TextInput, TouchableOpacity, Alert } from "react-native";
 import EmojiPicker from "./EmojiPicker";
 import { MOOD_LEVELS } from "@/constants/checkin";
 import { useCheckin } from "@/contexts/CheckinContext";
+import { useTheme } from "@/contexts/ThemeContext";
+import { checkinStyles } from "@/styles/checkin";
 
 const CheckinForm: React.FC = () => {
   const { draft, setDraft, save, cancelEdit, record } = useCheckin();
+  const { theme } = useTheme();
 
   const handleSave = async () => {
     try {
@@ -29,8 +25,12 @@ const CheckinForm: React.FC = () => {
 
   return (
     <>
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>How are you feeling today?</Text>
+      <View style={checkinStyles.sectionCheckin}>
+        <Text
+          style={[checkinStyles.sectionTitle, { color: theme.colors.text }]}
+        >
+          How are you feeling today?
+        </Text>
         <EmojiPicker
           options={MOOD_LEVELS}
           selectedValue={draft.mood}
@@ -38,13 +38,26 @@ const CheckinForm: React.FC = () => {
         />
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Additional notes</Text>
+      <View style={checkinStyles.sectionCheckin}>
+        <Text
+          style={[checkinStyles.sectionTitle, { color: theme.colors.text }]}
+        >
+          Additional notes:
+        </Text>
         <TextInput
-          style={styles.notesInput}
+          style={[
+            checkinStyles.input,
+            checkinStyles.notesInput,
+            {
+              backgroundColor: theme.colors.surface,
+              color: theme.colors.text,
+              borderColor: theme.colors.border,
+            },
+          ]}
           value={draft.notes}
           onChangeText={(t) => setDraft((d) => ({ ...d, notes: t }))}
           placeholder="How was your day? Any thoughts or feelings you'd like to share?"
+          placeholderTextColor={theme.colors.textSecondary}
           multiline
           numberOfLines={4}
           textAlignVertical="top"
@@ -52,59 +65,48 @@ const CheckinForm: React.FC = () => {
         />
       </View>
 
-      <View style={{ flexDirection: "row", gap: 12 }}>
-        <TouchableOpacity
-          style={[styles.submitButton, { flex: 1 }]}
-          onPress={handleSave}
-        >
-          <Text style={styles.submitButtonText}>Save</Text>
-        </TouchableOpacity>
+      <View style={{ flexDirection: "row", gap: 12, display: "flex" }}>
         {record && (
           <TouchableOpacity
-            style={[styles.cancelButton, { flex: 0.5 }]}
+            style={[
+              checkinStyles.button,
+              checkinStyles.buttonCheckin,
+              { flex: 1, backgroundColor: theme.colors.surface },
+            ]}
             onPress={cancelEdit}
           >
-            <Text style={styles.cancelButtonText}>Cancel</Text>
+            <Text
+              style={[
+                checkinStyles.buttonText,
+                checkinStyles.buttonTextCheckin,
+                { color: theme.colors.text },
+              ]}
+            >
+              Cancel
+            </Text>
           </TouchableOpacity>
         )}
+        <TouchableOpacity
+          style={[
+            checkinStyles.button,
+            checkinStyles.buttonCheckin,
+            { flex: 1, backgroundColor: theme.colors.primary },
+          ]}
+          onPress={handleSave}
+        >
+          <Text
+            style={[
+              checkinStyles.buttonText,
+              checkinStyles.buttonTextCheckin,
+              { color: "#ffffff" },
+            ]}
+          >
+            Save
+          </Text>
+        </TouchableOpacity>
       </View>
     </>
   );
 };
 
 export default CheckinForm;
-
-const styles = StyleSheet.create({
-  section: { marginBottom: 24 },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#2c3e50",
-    marginBottom: 12,
-  },
-  notesInput: {
-    backgroundColor: "#ffffff",
-    borderWidth: 1,
-    borderColor: "#e1e8ed",
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    minHeight: 100,
-  },
-  submitButton: {
-    backgroundColor: "#3498db",
-    borderRadius: 12,
-    padding: 16,
-    alignItems: "center",
-    marginTop: 8,
-  },
-  submitButtonText: { color: "#ffffff", fontSize: 18, fontWeight: "600" },
-  cancelButton: {
-    backgroundColor: "#eaeef3",
-    borderRadius: 12,
-    padding: 16,
-    alignItems: "center",
-    marginTop: 8,
-  },
-  cancelButtonText: { color: "#2c3e50", fontSize: 16, fontWeight: "600" },
-});

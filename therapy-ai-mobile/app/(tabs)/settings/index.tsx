@@ -31,6 +31,7 @@ import Disclaimer from "@/components/legal/Disclaimer";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { database } from "@/utils/database";
+import { commonStyles } from "@/styles/common";
 
 interface SettingItemProps {
   title: string;
@@ -89,7 +90,7 @@ const SettingSection: React.FC<{
   return (
     <View style={styles.section}>
       <Text
-        style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}
+        style={[styles.sectionTitleSettings, { color: theme.colors.textSecondary }]}
       >
         {title}
       </Text>
@@ -217,9 +218,9 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View
-          style={[styles.header, { borderBottomColor: theme.colors.border }]}
+          style={[styles.headerSettings, { borderBottomColor: theme.colors.border }]}
         >
-          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
+          <Text style={[styles.headerTitleSettings, { color: theme.colors.text }]}>
             Settings
           </Text>
           <Text
@@ -381,40 +382,27 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  ...commonStyles,
   scrollView: {
     flex: 1,
   },
-  header: {
+  headerSettings: {
     padding: 20,
     paddingBottom: 30,
     borderBottomWidth: 1,
   },
-  headerTitle: {
+  headerTitleSettings: {
     fontSize: 32,
     fontWeight: "bold",
     marginBottom: 5,
   },
-  headerSubtitle: {
-    fontSize: 16,
-  },
-  section: {
-    marginTop: 20,
-  },
-  sectionTitle: {
+  sectionTitleSettings: {
     fontSize: 16,
     fontWeight: "600",
     marginLeft: 20,
     marginBottom: 10,
     textTransform: "uppercase",
     letterSpacing: 0.5,
-  },
-  sectionContent: {
-    borderRadius: 12,
-    marginHorizontal: 15,
-    overflow: "hidden",
   },
   settingItem: {
     flexDirection: "row",

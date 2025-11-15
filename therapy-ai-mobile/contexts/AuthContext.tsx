@@ -26,9 +26,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.warn('Session error:', error.message);
+        // If refresh token is invalid, clear the session
+        if (error.message.includes('Refresh Token')) {
+          console.log('Clearing invalid session...');
+          supabase.auth.signOut().catch(console.error);
+        }
+      }
       setSession(session);
       setUser(session?.user ?? null);
+      setLoading(false);
+    }).catch((error) => {
+      console.error('Failed to get session:', error);
       setLoading(false);
     });
 

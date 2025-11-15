@@ -115,30 +115,15 @@ export default function ChatInput() {
 
       try {
         const transcribedText = await speechToText(uri);
-        const cleanedText = transcribedText?.trim() || "";
-
-        // Filter out false positives (common noise transcriptions)
-        const falsePositives = ["you", "thank you", ".", "thanks", "um", "uh", "hmm"];
-        const isFalsePositive = falsePositives.includes(cleanedText.toLowerCase());
-        
-        // Require at least 3 characters for valid transcription (filters out ".", "um", etc.)
-        const isTooShort = cleanedText.length < 3;
-        
-        if (!cleanedText || isFalsePositive || isTooShort) {
-          console.log(`❌ Invalid transcription: "${cleanedText}" (length: ${cleanedText.length})`);
-          Alert.alert(
-            "No Speech Detected", 
-            "Please speak clearly and try again. Recording may have been too short."
-          );
+        if (!transcribedText || transcribedText.trim() === "") {
+          Alert.alert("No Speech Detected", "Please try speaking again.");
           setRecordingState("idle");
           return;
         }
 
-        console.log(`✅ Valid transcription: "${cleanedText}"`);
-        
         // Send the transcribed text as audio message (shows as voice bubble)
         setRecordingState("idle");
-        await sendMessage(cleanedText, "audio");
+        await sendMessage(transcribedText.trim(), "audio");
       } catch (transcriptionError) {
         console.error("Transcription failed:", transcriptionError);
         // Send error message as failed transcription
@@ -294,7 +279,8 @@ export default function ChatInput() {
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 12,
+    paddingBottom: 16,
     backgroundColor: "white",
     borderTopWidth: 1,
     borderTopColor: "#E0E0E0",
