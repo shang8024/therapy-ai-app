@@ -216,7 +216,9 @@ export default function ChatSessionScreen() {
           style={[styles.buttonSmall, { backgroundColor: theme.colors.error }]}
           onPress={() => setShowCrisisModal(true)}
         >
-          <Text style={styles.buttonText}>Crisis Help</Text>
+          <Text style={[styles.buttonText, { color: "#FFFFFF" }]}>
+            Crisis Help
+          </Text>
         </Pressable>
       </View>
 

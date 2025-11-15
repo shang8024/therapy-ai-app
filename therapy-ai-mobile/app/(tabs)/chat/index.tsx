@@ -120,7 +120,9 @@ export default function ChatIndexScreen() {
           ]}
           onPress={handleNewChat}
         >
-          <Text style={styles.buttonText}>+ New Chat</Text>
+          <Text style={[styles.buttonText, { color: "#FFFFFF" }]}>
+            + New Chat
+          </Text>
         </Pressable>
       </View>
 
