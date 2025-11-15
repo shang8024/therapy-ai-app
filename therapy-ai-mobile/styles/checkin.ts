@@ -2,7 +2,9 @@ import { StyleSheet } from "react-native";
 import { commonStyles } from "./common";
 
 export const checkinStyles = StyleSheet.create({
-  ...commonStyles,
+  // Explicitly select only the needed common styles
+  ...(commonStyles.container && { container: commonStyles.container }),
+  ...(commonStyles.title && { title: commonStyles.title }),
   sectionCheckin: {
     marginBottom: 24,
   },
