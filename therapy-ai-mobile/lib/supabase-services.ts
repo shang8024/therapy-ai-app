@@ -27,12 +27,19 @@ function isAuthError(error: any): boolean {
 /**
  * Handle Supabase errors gracefully
  */
-export function handleSupabaseError(error: any, operation: string): never {
+export async function handleSupabaseError(
+  error: any,
+  operation: string
+): Promise<never> {
   console.error(`Supabase ${operation} error:`, error);
 
   if (isAuthError(error)) {
     // Sign out user on auth errors
-    supabase.auth.signOut().catch(console.error);
+    try {
+      await supabase.auth.signOut();
+    } catch (signOutError) {
+      console.error("Error during sign out:", signOutError);
+    }
     throw new Error("Session expired. Please sign in again.");
   }
 
@@ -58,7 +65,7 @@ export interface UserProfile {
 /**
  * Get user profile by ID
  */
-export async function getUserProfile(userId: string) {
+export async function getUserProfile(userId: string): Promise<UserProfile> {
   try {
     const { data, error } = await supabase
       .from("user_profiles")
@@ -69,7 +76,7 @@ export async function getUserProfile(userId: string) {
     if (error) throw error;
     return data as UserProfile;
   } catch (error) {
-    handleSupabaseError(error, "getUserProfile");
+    return await handleSupabaseError(error, "getUserProfile");
   }
 }
 

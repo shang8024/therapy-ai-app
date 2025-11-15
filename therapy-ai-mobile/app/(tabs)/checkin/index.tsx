@@ -25,7 +25,7 @@ export default function CheckinScreen() {
         { backgroundColor: theme.colors.background },
       ]}
     >
-      <ScrollView contentContainerStyle={checkinStyles.scrollContent}>
+      <ScrollView contentContainerStyle={checkinStyles.scrollContentCheckin}>
         <View style={checkinStyles.header}>
           <Text style={[checkinStyles.title, { color: theme.colors.text }]}>
             Daily Check-in
