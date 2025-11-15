@@ -23,6 +23,8 @@ export async function sendMessageToAI(
   message: string,
   chatId: string,
   userId: string,
+  userMessageId: string,
+  aiMessageId: string,
   conversationHistory: ChatMessage[] = [],
   onChunk: (content: string) => void,
   onComplete: (fullResponse: string) => void,
@@ -134,6 +136,8 @@ export async function sendMessageToAI(
         message,
         chatId,
         userId,
+        userMessageId,
+        aiMessageId,
         conversationHistory: conversationHistory.slice(-10),
       });
 

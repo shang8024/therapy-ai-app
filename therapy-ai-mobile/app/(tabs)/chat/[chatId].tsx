@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -72,8 +72,24 @@ export default function ChatSessionScreen() {
     clearCurrentChat,
   } = useChat();
   const [showCrisisModal, setShowCrisisModal] = useState(false);
+  const previousMessageCountRef = useRef<number>(0);
+  const [lastNewMessageId, setLastNewMessageId] = useState<string | null>(null);
 
   const currentSession = chatSessions.find((session) => session.id === chatId);
+
+  // Track when NEW messages are added (not just loaded from storage)
+  useEffect(() => {
+    if (messages.length > previousMessageCountRef.current) {
+      // New message was added
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.role === 'assistant' && lastMessage.audioUri) {
+        setLastNewMessageId(lastMessage.id);
+        // Clear after a short delay to prevent re-playing on re-renders
+        setTimeout(() => setLastNewMessageId(null), 1000);
+      }
+    }
+    previousMessageCountRef.current = messages.length;
+  }, [messages]);
 
   useEffect(() => {
     if (typeof chatId === "string") {
@@ -95,9 +111,12 @@ export default function ChatSessionScreen() {
     router.back();
   };
 
-  const renderMessage = ({ item }: { item: any }) => (
-    <MessageBubble message={item} />
-  );
+  const renderMessage = ({ item, index }: { item: any; index: number }) => {
+    // Only auto-play if this is the newly generated message
+    const isLatest = item.id === lastNewMessageId;
+    
+    return <MessageBubble message={item} isLatest={isLatest} />;
+  };
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>

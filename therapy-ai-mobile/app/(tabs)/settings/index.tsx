@@ -112,7 +112,7 @@ export default function SettingsScreen() {
   const [syncing, setSyncing] = React.useState(false);
   const [clearingLocal, setClearingLocal] = React.useState(false);
   const { theme, isDarkMode, toggleTheme } = useTheme();
-  const { user, signOut, syncData } = useAuth();
+  const { user, signOut } = useAuth();
 
   React.useEffect(() => {
     if (!user?.id) return;
@@ -278,23 +278,13 @@ export default function SettingsScreen() {
           />
           {user && (
             <SettingItem
-              title="Sync to Cloud"
-              description="Backup your data to the cloud"
-              onPress={async () => {
-                setSyncing(true);
-                try {
-                  await syncData();
-                  Alert.alert("Success", "Your data has been synced to the cloud!");
-                } catch (error) {
-                  Alert.alert("Error", "Failed to sync data. Please try again.");
-                } finally {
-                  setSyncing(false);
-                }
-              }}
+              title="Cloud Sync"
+              description="Automatically syncing to cloud"
               rightComponent={
-                syncing ? <ActivityIndicator size="small" color={theme.colors.primary} /> : null
+                <Text style={{ color: theme.colors.success || '#10b981', fontWeight: '600' }}>
+                  ✓ Enabled
+                </Text>
               }
-              showArrow={!syncing}
             />
           )}
           <SettingItem

@@ -7,17 +7,18 @@ import {
   Text,
   StyleSheet,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { Audio } from "expo-av";
 import { useChat } from "../../contexts/ChatContext";
 import { useTheme } from "../../contexts/ThemeContext";
+import { speechToText } from "../../lib/groq-audio";
 
-type RecordingState = "idle" | "recording" | "stopped";
+type RecordingState = "idle" | "recording" | "stopped" | "transcribing";
 
 export default function ChatInput() {
   const { theme } = useTheme();
-  const { inputText, setInputText, sendMessage, sendAudioMessage, isLoading } =
-    useChat();
+  const { inputText, setInputText, sendMessage, isLoading } = useChat();
   const [isFocused, setIsFocused] = useState(false);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [recordingState, setRecordingState] = useState<RecordingState>("idle");
@@ -100,23 +101,45 @@ export default function ChatInput() {
     if (!recording || recordingState !== "recording") return;
 
     try {
+      // Stop recording
       await recording.stopAndUnloadAsync();
       const uri = recording.getURI();
-      setRecordingState("stopped");
-      setRecording(null); // Clear the recording reference immediately
+      setRecording(null);
       
-      // Send audio message directly instead of transcribing
-      if (uri) {
-        await sendAudioMessage(uri);
+      if (!uri) {
+        throw new Error('No audio URI');
+      }
+
+      // Transcribe audio to text
+      setRecordingState("transcribing");
+      
+      try {
+        const transcribedText = await speechToText(uri);
+        
+        if (!transcribedText || transcribedText.trim() === '') {
+          Alert.alert("No Speech Detected", "Please try speaking again.");
+          setRecordingState("idle");
+          return;
+        }
+
+        // Send the transcribed text as audio message (shows as voice bubble)
+        setRecordingState("idle");
+        await sendMessage(transcribedText, "audio");
+        
+      } catch (transcriptionError) {
+        console.error('Transcription failed:', transcriptionError);
+        Alert.alert(
+          "Transcription Failed", 
+          "Could not convert speech to text. Please try again or type your message."
+        );
+        setRecordingState("idle");
       }
       
-      // Reset state after sending
-      setRecordingState("idle");
-    } catch {
-      // Reset state even if stopping fails
+    } catch (error) {
+      console.error('Stop recording error:', error);
       setRecordingState("idle");
       setRecording(null);
-      Alert.alert("Error", "Failed to stop recording. Please try again.");
+      Alert.alert("Error", "Failed to process recording. Please try again.");
     }
   };
 
@@ -142,7 +165,8 @@ export default function ChatInput() {
     inputText.trim() === "" &&
     (recordingState === "idle" || recordingState === "recording");
   const showSendButton =
-    inputText.trim() !== "" || recordingState === "stopped";
+    inputText.trim() !== "" && recordingState === "idle";
+  const isTranscribing = recordingState === "transcribing";
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.border }]}>
@@ -161,6 +185,8 @@ export default function ChatInput() {
           placeholder={
             recordingState === "recording"
               ? "Recording..."
+              : recordingState === "transcribing"
+              ? "Transcribing..."
               : "Share what's on your mind..."
           }
           placeholderTextColor={theme.colors.textSecondary}
@@ -168,10 +194,16 @@ export default function ChatInput() {
           maxLength={1000}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
-          editable={!isLoading && recordingState !== "recording"}
+          editable={!isLoading && recordingState === "idle"}
         />
         
-        {showMicButton && (
+        {isTranscribing && (
+          <View style={styles.micButton}>
+            <ActivityIndicator size="small" color={theme.colors.primary} />
+          </View>
+        )}
+
+        {showMicButton && !isTranscribing && (
           <Pressable
             style={[
               styles.micButton,
@@ -190,21 +222,15 @@ export default function ChatInput() {
           <Pressable
             style={[
               styles.sendButton,
-              (!inputText.trim() || isLoading) &&
-                recordingState === "idle" &&
-                styles.sendButtonDisabled,
+              (!inputText.trim() || isLoading) && styles.sendButtonDisabled,
             ]}
             onPress={handleSend}
-            disabled={
-              (!inputText.trim() || isLoading) && recordingState === "idle"
-            }
+            disabled={!inputText.trim() || isLoading}
           >
             <Text
               style={[
                 styles.sendButtonText,
-                (!inputText.trim() || isLoading) &&
-                  recordingState === "idle" &&
-                  styles.sendButtonTextDisabled,
+                (!inputText.trim() || isLoading) && styles.sendButtonTextDisabled,
               ]}
             >
               {isLoading ? "..." : "Send"}
@@ -214,8 +240,14 @@ export default function ChatInput() {
       </View>
       
       {recordingState === "recording" && (
-        <Text style={styles.recordingIndicator}>
+        <Text style={[styles.recordingIndicator, { color: theme.colors.textSecondary }]}>
           🔴 Recording... Tap the stop button when finished
+        </Text>
+      )}
+      
+      {recordingState === "transcribing" && (
+        <Text style={[styles.recordingIndicator, { color: theme.colors.primary }]}>
+          Converting speech to text...
         </Text>
       )}
       
