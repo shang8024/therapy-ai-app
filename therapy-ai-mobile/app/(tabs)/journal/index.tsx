@@ -4,12 +4,14 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  FlatList,
   StyleSheet,
   Alert,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  ScrollView,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -326,159 +328,183 @@ export default function JournalScreen() {
         { paddingTop: insets.top, backgroundColor: theme.colors.background },
       ]}
     >
+      <View
+        style={[
+          styles.header,
+          {
+            backgroundColor: theme.colors.surface,
+            borderBottomColor: theme.colors.border,
+          },
+        ]}
+      >
+        <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
+          Journal
+        </Text>
+        <Text
+          style={[styles.headerSubtitle, { color: theme.colors.textSecondary }]}
+        >
+          Write your thoughts and feelings
+        </Text>
+      </View>
+
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
-        <View
-          style={[
-            styles.header,
-            {
-              backgroundColor: theme.colors.surface,
-              borderBottomColor: theme.colors.border,
-            },
-          ]}
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
-            Journal
-          </Text>
-          <Text
-            style={[
-              styles.headerSubtitle,
-              { color: theme.colors.textSecondary },
-            ]}
-          >
-            Write your thoughts and feelings
-          </Text>
-        </View>
-
-        <View
-          style={[
-            styles.inputSection,
-            { backgroundColor: theme.colors.surface },
-          ]}
-        >
-          <TextInput
-            style={[
-              styles.input,
-              styles.titleInput,
-              {
-                backgroundColor: theme.colors.background,
-                borderColor: theme.colors.border,
-                color: theme.colors.text,
-              },
-            ]}
-            placeholder="Entry title..."
-            placeholderTextColor={theme.colors.textSecondary}
-            value={title}
-            onChangeText={setTitle}
-            maxLength={100}
-          />
-          <TextInput
-            style={[
-              styles.input,
-              styles.contentInput,
-              {
-                backgroundColor: theme.colors.background,
-                borderColor: theme.colors.border,
-                color: theme.colors.text,
-              },
-            ]}
-            placeholder="Write your thoughts here..."
-            placeholderTextColor={theme.colors.textSecondary}
-            value={content}
-            onChangeText={setContent}
-            multiline
-            textAlignVertical="top"
-            maxLength={2000}
-          />
-
-          <View style={styles.buttonContainer}>
-            {editingEntry && (
-              <TouchableOpacity
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View>
+              <View
                 style={[
-                  styles.button,
-                  styles.cancelButton,
+                  styles.inputSection,
                   { backgroundColor: theme.colors.surface },
                 ]}
-                onPress={handleCancel}
               >
-                <Text style={[styles.buttonText, { color: theme.colors.text }]}>
-                  Cancel
-                </Text>
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              style={[
-                styles.button,
-                styles.saveButton,
-                { backgroundColor: theme.colors.primary },
-                isLoading && styles.disabledButton,
-              ]}
-              onPress={handleSave}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <Text style={[styles.buttonText, styles.saveButtonText]}>
-                  {editingEntry ? "Update" : "Save"} Entry
-                </Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
+                <TextInput
+                  style={[
+                    styles.input,
+                    styles.titleInput,
+                    {
+                      backgroundColor: theme.colors.background,
+                      borderColor: theme.colors.border,
+                      color: theme.colors.text,
+                    },
+                  ]}
+                  placeholder="Entry title..."
+                  placeholderTextColor={theme.colors.textSecondary}
+                  value={title}
+                  onChangeText={setTitle}
+                  maxLength={100}
+                  returnKeyType="next"
+                />
+                <TextInput
+                  style={[
+                    styles.input,
+                    styles.contentInput,
+                    {
+                      backgroundColor: theme.colors.background,
+                      borderColor: theme.colors.border,
+                      color: theme.colors.text,
+                    },
+                  ]}
+                  placeholder="Write your thoughts here..."
+                  placeholderTextColor={theme.colors.textSecondary}
+                  value={content}
+                  onChangeText={setContent}
+                  multiline
+                  textAlignVertical="top"
+                  maxLength={2000}
+                  blurOnSubmit={false}
+                />
 
-        <View style={styles.entriesSection}>
-          <View style={styles.entriesHeader}>
-            <Text
-              style={[
-                styles.title,
-                styles.entriesTitle,
-                { color: theme.colors.text },
-              ]}
-            >
-              Your Entries ({entries.length})
-            </Text>
-            <TouchableOpacity
-              onPress={loadEntries}
-              style={[
-                styles.smallButton,
-                { backgroundColor: theme.colors.surface },
-              ]}
-            >
-              <Ionicons name="refresh" size={20} color={theme.colors.primary} />
-            </TouchableOpacity>
-          </View>
-          {isLoading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color={theme.colors.primary} />
-              <Text
-                style={[styles.text, { color: theme.colors.textSecondary }]}
-              >
-                Loading entries...
-              </Text>
+                <View style={styles.buttonContainer}>
+                  {editingEntry && (
+                    <TouchableOpacity
+                      style={[
+                        styles.button,
+                        styles.cancelButton,
+                        { backgroundColor: theme.colors.surface },
+                      ]}
+                      onPress={handleCancel}
+                    >
+                      <Text
+                        style={[
+                          styles.buttonText,
+                          { color: theme.colors.text },
+                        ]}
+                      >
+                        Cancel
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity
+                    style={[
+                      styles.button,
+                      styles.saveButton,
+                      { backgroundColor: theme.colors.primary },
+                      isLoading && styles.disabledButton,
+                    ]}
+                    onPress={handleSave}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Text style={[styles.buttonText, styles.saveButtonText]}>
+                        {editingEntry ? "Update" : "Save"} Entry
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={styles.entriesSection}>
+                <View style={styles.entriesHeader}>
+                  <Text
+                    style={[
+                      styles.title,
+                      styles.entriesTitle,
+                      { color: theme.colors.text },
+                    ]}
+                  >
+                    Your Entries ({entries.length})
+                  </Text>
+                  <TouchableOpacity
+                    onPress={loadEntries}
+                    style={[
+                      styles.smallButton,
+                      { backgroundColor: theme.colors.surface },
+                    ]}
+                  >
+                    <Ionicons
+                      name="refresh"
+                      size={20}
+                      color={theme.colors.primary}
+                    />
+                  </TouchableOpacity>
+                </View>
+                {isLoading ? (
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator
+                      size="small"
+                      color={theme.colors.primary}
+                    />
+                    <Text
+                      style={[
+                        styles.text,
+                        { color: theme.colors.textSecondary },
+                      ]}
+                    >
+                      Loading entries...
+                    </Text>
+                  </View>
+                ) : entries.length === 0 ? (
+                  <Text
+                    style={[
+                      styles.text,
+                      styles.emptyText,
+                      { color: theme.colors.textSecondary },
+                    ]}
+                  >
+                    No journal entries yet. Start writing!
+                  </Text>
+                ) : (
+                  <View>
+                    {entries.map((item) => (
+                      <View key={item.id.toString()}>
+                        {renderEntry({ item })}
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
             </View>
-          ) : entries.length === 0 ? (
-            <Text
-              style={[
-                styles.text,
-                styles.emptyText,
-                { color: theme.colors.textSecondary },
-              ]}
-            >
-              No journal entries yet. Start writing!
-            </Text>
-          ) : (
-            <FlatList
-              data={entries}
-              renderItem={renderEntry}
-              keyExtractor={(item) => item.id.toString()}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.entriesList}
-            />
-          )}
-        </View>
+          </TouchableWithoutFeedback>
+        </ScrollView>
       </KeyboardAvoidingView>
     </View>
   );

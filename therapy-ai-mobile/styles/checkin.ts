@@ -3,10 +3,6 @@ import { commonStyles } from "./common";
 
 export const checkinStyles = StyleSheet.create({
   ...commonStyles,
-  scrollContentCheckin: {
-    padding: 20,
-    paddingBottom: 40,
-  },
   sectionCheckin: {
     marginBottom: 24,
   },
