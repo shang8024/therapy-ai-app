@@ -37,10 +37,10 @@ export interface ChatStatistics {
 
 export interface ChatTrendData {
   labels: string[];
-  data: number[]; // User messages per day
+  data: number[]; 
   dates: string[];
-  activeUsers: number[]; // Global active users per day
-  avgMessagesPerUser: number[]; // Global average messages per person per day
+  activeUsers: number[]; 
+  avgMessagesPerUser: number[]; 
 }
 
 export type DashboardType = "checkins" | "chat";
@@ -68,7 +68,6 @@ export const DashboardContext = createContext<DashboardContextValue | null>(
 
 type Props = { children: React.ReactNode };
 
-// Helper function to get all messages across all chat sessions
 async function getAllChatMessages(userId: string): Promise<Message[]> {
   try {
     const allMessages: Message[] = [];
@@ -105,14 +104,11 @@ async function getAllChatMessages(userId: string): Promise<Message[]> {
       }
     } catch (error) {
       console.warn(
-        "DashboardContext: Failed to load chat sessions from Supabase, falling back to local storage:",
+        "DashboardContext: Failed to load chat sessions from Supabase",
         error
       );
     }
 
-    // -----------------------------------------------------------------------
-    // 2) Fallback: load from AsyncStorage using same keys as ChatContext
-    // -----------------------------------------------------------------------
     const sessionsData = await AsyncStorage.getItem(
       `appv1:${userId}:chatSessions`
     );
@@ -139,7 +135,6 @@ async function getAllChatMessages(userId: string): Promise<Message[]> {
   }
 }
 
-// Helper function to calculate chat statistics
 function calculateChatStatistics(messages: Message[]): ChatStatistics {
   const now = new Date();
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -224,10 +219,8 @@ async function getChatTrendData(
     labels.push(label);
     dates.push(dateString);
     
-    // User messages
     data.push(messagesByDate.get(dateString) || 0);
     
-    // Global metrics
     const globalStat = globalStatsByDate.get(dateString);
     activeUsers.push(globalStat?.active_users || 0);
     avgMessagesPerUser.push(globalStat?.avg_messages_per_user || 0);
@@ -325,7 +318,6 @@ export const DashboardProvider: React.FC<Props> = ({ children }) => {
       setError(null);
 
       try {
-        // Optionally sync from cloud first
         if (syncFirst) {
           try {
             await syncFromCloud();
