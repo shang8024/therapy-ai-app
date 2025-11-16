@@ -13,6 +13,8 @@ import { useTheme } from "../../../contexts/ThemeContext";
 import { useDashboard } from "../../../contexts/DashboardContext";
 import { MoodTrendChart } from "../../../components/dashboard/MoodTrendChart";
 import { StatisticsCards } from "../../../components/dashboard/StatisticsCards";
+import { ChatStatisticsCards } from "../../../components/dashboard/ChatStatisticsCards";
+import { ChatMetricsChart } from "../../../components/dashboard/ChatMetricsChart";
 
 export default function DashboardScreen() {
   const { theme } = useTheme();
@@ -20,11 +22,16 @@ export default function DashboardScreen() {
     statistics,
     moodTrend7Days,
     moodTrend30Days,
+    chatStatistics,
+    chatTrend7Days,
+    chatTrend30Days,
     loading,
     error,
     refreshData,
     selectedTimeRange,
     setSelectedTimeRange,
+    dashboardType,
+    setDashboardType,
   } = useDashboard();
   
   return (
@@ -109,6 +116,46 @@ export default function DashboardScreen() {
             Your Progress
           </Text>
           
+          {/* Dashboard Type Selector */}
+          <View style={[styles.dashboardTypeSelector, { backgroundColor: theme.colors.surface, borderColor: theme.colors.text }]}>
+            <TouchableOpacity
+              style={[
+                styles.dashboardTypeButton,
+                dashboardType === "checkins" && styles.dashboardTypeButtonActive,
+                dashboardType === "checkins" && { backgroundColor: theme.colors.primary || "#3498db" },
+              ]}
+              onPress={() => setDashboardType("checkins")}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.dashboardTypeButtonText,
+                  { color: dashboardType === "checkins" ? "#ffffff" : theme.colors.text },
+                ]}
+              >
+                📝 Check-ins
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.dashboardTypeButton,
+                dashboardType === "chat" && styles.dashboardTypeButtonActive,
+                dashboardType === "chat" && { backgroundColor: theme.colors.primary || "#9b59b6" },
+              ]}
+              onPress={() => setDashboardType("chat")}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.dashboardTypeButtonText,
+                  { color: dashboardType === "chat" ? "#ffffff" : theme.colors.text },
+                ]}
+              >
+                💬 Chat Metrics
+              </Text>
+            </TouchableOpacity>
+          </View>
+          
           {error && (
             <View style={[styles.errorContainer, { backgroundColor: theme.colors.surface }]}>
               <Text style={[styles.errorText, { color: theme.colors.error }]}>
@@ -117,15 +164,29 @@ export default function DashboardScreen() {
             </View>
           )}
 
-          <StatisticsCards statistics={statistics} loading={loading} />
-
-          <MoodTrendChart
-            moodTrend7Days={moodTrend7Days}
-            moodTrend30Days={moodTrend30Days}
-            selectedTimeRange={selectedTimeRange}
-            onTimeRangeChange={setSelectedTimeRange}
-            loading={loading}
-          />
+          {dashboardType === "checkins" ? (
+            <>
+              <StatisticsCards statistics={statistics} loading={loading} />
+              <MoodTrendChart
+                moodTrend7Days={moodTrend7Days}
+                moodTrend30Days={moodTrend30Days}
+                selectedTimeRange={selectedTimeRange}
+                onTimeRangeChange={setSelectedTimeRange}
+                loading={loading}
+              />
+            </>
+          ) : (
+            <>
+              <ChatStatisticsCards statistics={chatStatistics} loading={loading} />
+              <ChatMetricsChart
+                chatTrend7Days={chatTrend7Days}
+                chatTrend30Days={chatTrend30Days}
+                selectedTimeRange={selectedTimeRange}
+                onTimeRangeChange={setSelectedTimeRange}
+                loading={loading}
+              />
+            </>
+          )}
         </View>
 
         <View style={styles.footer}>
@@ -216,6 +277,43 @@ const styles = StyleSheet.create({
     color: "#2c3e50",
     marginBottom: 16,
     textAlign: "center",
+  },
+  dashboardTypeSelector: {
+    flexDirection: "row",
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 20,
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  dashboardTypeButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dashboardTypeButtonActive: {
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  dashboardTypeButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
   },
   errorContainer: {
     backgroundColor: "#fee",
