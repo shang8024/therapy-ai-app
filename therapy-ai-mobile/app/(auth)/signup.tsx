@@ -161,7 +161,9 @@ export default function SignupScreen() {
               {loading ? (
                 <ActivityIndicator color="#ffffff" />
               ) : (
-                <Text style={styles.buttonText}>Create Account</Text>
+                <Text style={[styles.buttonText, { color: "#ffffff" }]}>
+                  Create Account
+                </Text>
               )}
             </TouchableOpacity>
 
@@ -179,7 +181,11 @@ export default function SignupScreen() {
                 disabled={loading}
               >
                 <Text
-                  style={[styles.footerText, styles.link, { color: "#FFFFFF" }]}
+                  style={[
+                    styles.footerText,
+                    styles.link,
+                    { color: theme.colors.primary },
+                  ]}
                 >
                   Sign In
                 </Text>

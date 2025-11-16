@@ -37,6 +37,7 @@ export async function sendImmediateMessage(message: string): Promise<void> {
     content: {
       title: "TherapyAI",
       body: message,
+      data: { target: "/(tabs)/dashboard" },
     },
     trigger: null,
   });
@@ -110,7 +111,9 @@ export async function cancelDailyReminders(userId: string): Promise<void> {
   ]);
 }
 
-export async function migrateNotificationsIfNeeded(userId: string): Promise<void> {
+export async function migrateNotificationsIfNeeded(
+  userId: string
+): Promise<void> {
   const [pref, scheduled, savedVersion] = await AsyncStorage.multiGet([
     getNotifPrefKey(userId),
     getNotifScheduledKey(userId),

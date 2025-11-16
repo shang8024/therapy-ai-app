@@ -37,10 +37,10 @@ export interface ChatStatistics {
 
 export interface ChatTrendData {
   labels: string[];
-  data: number[]; 
+  data: number[];
   dates: string[];
-  activeUsers: number[]; 
-  avgMessagesPerUser: number[]; 
+  activeUsers: number[];
+  avgMessagesPerUser: number[];
 }
 
 export type DashboardType = "checkins" | "chat";
@@ -71,7 +71,6 @@ type Props = { children: React.ReactNode };
 async function getAllChatMessages(userId: string): Promise<Message[]> {
   try {
     const allMessages: Message[] = [];
-
 
     try {
       const cloudSessions = await SupabaseService.getChatSessions(userId);
@@ -120,10 +119,12 @@ async function getAllChatMessages(userId: string): Promise<Message[]> {
       const messagesKey = `appv1:${userId}:messages:${session.id}`;
       const messagesData = await AsyncStorage.getItem(messagesKey);
       if (messagesData) {
-        const messages: Message[] = JSON.parse(messagesData).map((msg: any) => ({
-          ...msg,
-          timestamp: new Date(msg.timestamp),
-        }));
+        const messages: Message[] = JSON.parse(messagesData).map(
+          (msg: any) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp),
+          })
+        );
         allMessages.push(...messages);
       }
     }
@@ -172,7 +173,8 @@ async function getChatTrendData(
   startDate.setDate(endDate.getDate() - days + 1);
   startDate.setHours(0, 0, 0, 0);
   const endDateString = endDate.toISOString().split("T")[0] + "T23:59:59.999Z";
-  const startDateString = startDate.toISOString().split("T")[0] + "T00:00:00.000Z";
+  const startDateString =
+    startDate.toISOString().split("T")[0] + "T00:00:00.000Z";
 
   const messagesInRange = messages.filter((msg) => {
     const msgDate = new Date(msg.timestamp);
@@ -218,9 +220,9 @@ async function getChatTrendData(
     });
     labels.push(label);
     dates.push(dateString);
-    
+
     data.push(messagesByDate.get(dateString) || 0);
-    
+
     const globalStat = globalStatsByDate.get(dateString);
     activeUsers.push(globalStat?.active_users || 0);
     avgMessagesPerUser.push(globalStat?.avg_messages_per_user || 0);
@@ -310,57 +312,51 @@ export const DashboardProvider: React.FC<Props> = ({ children }) => {
     }
   }, [user?.id, isInitialized]);
 
-  const refreshData = useCallback(
-    async (syncFirst?: boolean) => {
-      if (!isInitialized || !user?.id) return;
+  const refreshData = useCallback(async () => {
+    if (!isInitialized || !user?.id) return;
 
-      setLoading(true);
-      setError(null);
+    setLoading(true);
+    setError(null);
 
+    try {
       try {
-        if (syncFirst) {
-          try {
-            await syncFromCloud();
-          } catch (syncErr) {
-            // eslint-disable-next-line no-console
-            console.warn("Failed to sync before refresh:", syncErr);
-          }
-        }
-
-        // Fetch check-in statistics and mood trends
-        const [stats, trend7Days, trend30Days] = await Promise.all([
-          database.getCheckinStatistics(),
-          database.getMoodTrendData(7),
-          database.getMoodTrendData(30),
-        ]);
-
-        setStatistics(stats);
-        setMoodTrend7Days(trend7Days);
-        setMoodTrend30Days(trend30Days);
-
-        // Fetch chat messages and calculate chat statistics
-        const allMessages = await getAllChatMessages(user.id);
-        const chatStats = calculateChatStatistics(allMessages);
-        const [chatTrend7, chatTrend30] = await Promise.all([
-          getChatTrendData(allMessages, 7),
-          getChatTrendData(allMessages, 30),
-        ]);
-
-        setChatStatistics(chatStats);
-        setChatTrend7Days(chatTrend7);
-        setChatTrend30Days(chatTrend30);
-      } catch (err) {
-        // eslint-disable-next-line no-console
-        console.error("Failed to load dashboard data:", err);
-        setError(
-          err instanceof Error ? err.message : "Failed to load dashboard data"
-        );
-      } finally {
-        setLoading(false);
+        await syncFromCloud();
+      } catch (syncErr) {
+        console.warn("Failed to sync before refresh:", syncErr);
       }
-    },
-    [isInitialized, user?.id, syncFromCloud]
-  );
+
+      // Fetch check-in statistics and mood trends
+      const [stats, trend7Days, trend30Days] = await Promise.all([
+        database.getCheckinStatistics(),
+        database.getMoodTrendData(7),
+        database.getMoodTrendData(30),
+      ]);
+
+      setStatistics(stats);
+      setMoodTrend7Days(trend7Days);
+      setMoodTrend30Days(trend30Days);
+
+      // Fetch chat messages and calculate chat statistics
+      const allMessages = await getAllChatMessages(user.id);
+      const chatStats = calculateChatStatistics(allMessages);
+      const [chatTrend7, chatTrend30] = await Promise.all([
+        getChatTrendData(allMessages, 7),
+        getChatTrendData(allMessages, 30),
+      ]);
+
+      setChatStatistics(chatStats);
+      setChatTrend7Days(chatTrend7);
+      setChatTrend30Days(chatTrend30);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("Failed to load dashboard data:", err);
+      setError(
+        err instanceof Error ? err.message : "Failed to load dashboard data"
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [isInitialized, user?.id, syncFromCloud]);
 
   useEffect(() => {
     refreshData();

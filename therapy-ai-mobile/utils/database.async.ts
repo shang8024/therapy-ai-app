@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { LEGAL_ACCEPT_KEY } from "@/constants/legal";
 
 export interface JournalEntry {
   id: number;
@@ -354,6 +355,7 @@ class AsyncDatabase {
     if (targets.length > 0) {
       await AsyncStorage.multiRemove(targets);
     }
+    await AsyncStorage.removeItem(LEGAL_ACCEPT_KEY);
 
     this.initialized = false;
     await this.init();

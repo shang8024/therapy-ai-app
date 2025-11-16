@@ -125,7 +125,9 @@ export default function LoginScreen() {
               {loading ? (
                 <ActivityIndicator color="#ffffff" />
               ) : (
-                <Text style={styles.buttonText}>Sign In</Text>
+                <Text style={[styles.buttonText, { color: "#ffffff" }]}>
+                  Sign In
+                </Text>
               )}
             </TouchableOpacity>
 
@@ -143,7 +145,11 @@ export default function LoginScreen() {
                 disabled={loading}
               >
                 <Text
-                  style={[styles.footerText, styles.link, { color: "#FFFFFF" }]}
+                  style={[
+                    styles.footerText,
+                    styles.link,
+                    { color: theme.colors.primary },
+                  ]}
                 >
                   Sign Up
                 </Text>

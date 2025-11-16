@@ -1,6 +1,6 @@
 // constants/legal.ts
 export const LEGAL_VERSION = "1"; // bump when ToS/Privacy changes
-export const LEGAL_ACCEPT_KEY = `LEGAL_ACCEPTED_V${LEGAL_VERSION}`;
+export const LEGAL_ACCEPT_KEY = `appv1:LEGAL_ACCEPTED_V${LEGAL_VERSION}`;
 
 export const TOS_URL =
   "https://www.notion.so/Terms-of-Service-2965a7709fbe80bcbdeaf9daca022f30?source=copy_link";
