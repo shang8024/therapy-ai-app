@@ -4,7 +4,6 @@
  */
 
 import { supabase } from './supabase';
-import { createParser, ParsedEvent, ReconnectInterval } from 'eventsource-parser';
 
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';

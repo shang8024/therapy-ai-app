@@ -71,14 +71,57 @@ type Props = { children: React.ReactNode };
 // Helper function to get all messages across all chat sessions
 async function getAllChatMessages(userId: string): Promise<Message[]> {
   try {
-    const sessionsData = await AsyncStorage.getItem(`appv1:chatSessions:${userId}`);
+    const allMessages: Message[] = [];
+
+
+    try {
+      const cloudSessions = await SupabaseService.getChatSessions(userId);
+
+      for (const session of cloudSessions) {
+        try {
+          const cloudMessages = await SupabaseService.getMessages(session.id);
+
+          const mapped: Message[] = cloudMessages.map((msg) => ({
+            id: msg.id,
+            chatId: msg.chat_id,
+            content: msg.content,
+            role: msg.role,
+            timestamp: new Date(msg.created_at),
+            audioUri: msg.audio_uri ?? undefined,
+            messageType: (msg.message_type as "text" | "audio") ?? "text",
+          }));
+
+          allMessages.push(...mapped);
+        } catch (error) {
+          console.warn(
+            `DashboardContext: Failed to load messages from Supabase for chat ${session.id}:`,
+            error
+          );
+        }
+      }
+
+      if (allMessages.length > 0) {
+        return allMessages;
+      }
+    } catch (error) {
+      console.warn(
+        "DashboardContext: Failed to load chat sessions from Supabase, falling back to local storage:",
+        error
+      );
+    }
+
+    // -----------------------------------------------------------------------
+    // 2) Fallback: load from AsyncStorage using same keys as ChatContext
+    // -----------------------------------------------------------------------
+    const sessionsData = await AsyncStorage.getItem(
+      `appv1:${userId}:chatSessions`
+    );
     if (!sessionsData) return [];
 
     const sessions: Array<{ id: string }> = JSON.parse(sessionsData);
-    const allMessages: Message[] = [];
 
     for (const session of sessions) {
-      const messagesKey = `appv1:messages:${userId}:${session.id}`;
+      const messagesKey = `appv1:${userId}:messages:${session.id}`;
       const messagesData = await AsyncStorage.getItem(messagesKey);
       if (messagesData) {
         const messages: Message[] = JSON.parse(messagesData).map((msg: any) => ({
