@@ -12,6 +12,7 @@ import { router } from "expo-router";
 import { useChat } from "../../../contexts/ChatContext";
 import { useTheme } from "../../../contexts/ThemeContext";
 import ChatSessionItem from "../../../components/chat/ChatSessionItem";
+import { chatStyles } from "@/styles/chat";
 
 export default function ChatIndexScreen() {
   const { theme } = useTheme();
@@ -80,13 +81,23 @@ export default function ChatIndexScreen() {
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>Welcome to Therapy AI</Text>
-      <Text style={[styles.emptySubtitle, { color: theme.colors.textSecondary }]}>
+      <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>
+        Welcome to Therapy AI
+      </Text>
+      <Text
+        style={[styles.emptySubtitle, { color: theme.colors.textSecondary }]}
+      >
         Start a conversation with your AI companion. Share your thoughts,
         feelings, or anything on your mind.
       </Text>
-      <Pressable style={[styles.startChatButton, { backgroundColor: theme.colors.primary }]} onPress={handleNewChat}>
-        <Text style={styles.startChatButtonText}>
+      <Pressable
+        style={[
+          styles.startChatButton,
+          { backgroundColor: theme.colors.primary },
+        ]}
+        onPress={handleNewChat}
+      >
+        <Text style={[styles.buttonText, { color: "#ffffff" }]}>
           Start Your First Conversation
         </Text>
       </Pressable>
@@ -94,11 +105,24 @@ export default function ChatIndexScreen() {
   );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      edges={["top"]}
+    >
       <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
-        <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Chat Sessions</Text>
-        <Pressable style={[styles.newChatButton, { backgroundColor: theme.colors.primary }]} onPress={handleNewChat}>
-          <Text style={styles.newChatButtonText}>+ New Chat</Text>
+        <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
+          Chat Sessions
+        </Text>
+        <Pressable
+          style={[
+            styles.buttonSmall,
+            { backgroundColor: theme.colors.primary },
+          ]}
+          onPress={handleNewChat}
+        >
+          <Text style={[styles.buttonText, { color: "#FFFFFF" }]}>
+            + New Chat
+          </Text>
         </Pressable>
       </View>
 
@@ -121,8 +145,18 @@ export default function ChatIndexScreen() {
         />
       )}
 
-      <View style={[styles.footer, { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.border }]}>
-        <Text style={[styles.footerText, { color: theme.colors.textSecondary }]}>
+      <View
+        style={[
+          styles.footer,
+          {
+            backgroundColor: theme.colors.surface,
+            borderTopColor: theme.colors.border,
+          },
+        ]}
+      >
+        <Text
+          style={[styles.footerText, { color: theme.colors.textSecondary }]}
+        >
           Your conversations are stored privately on your device
         </Text>
       </View>
@@ -131,71 +165,14 @@ export default function ChatIndexScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  ...chatStyles,
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
+    ...chatStyles.header,
     paddingVertical: 16,
-    borderBottomWidth: 1,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-  },
-  newChatButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  newChatButtonText: {
-    color: "white",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  listContainer: {
-    paddingVertical: 8,
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 32,
-  },
-  emptyTitle: {
-    fontSize: 28,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 16,
-  },
-  emptySubtitle: {
-    fontSize: 16,
-    textAlign: "center",
-    lineHeight: 24,
-    marginBottom: 32,
   },
   startChatButton: {
     paddingHorizontal: 32,
     paddingVertical: 16,
     borderRadius: 25,
-  },
-  startChatButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  footer: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    marginBottom: -40,
-  },
-  footerText: {
-    fontSize: 12,
-    textAlign: "center",
-    fontStyle: "italic",
   },
 });

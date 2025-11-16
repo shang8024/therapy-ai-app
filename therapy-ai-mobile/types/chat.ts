@@ -28,7 +28,7 @@ export interface ChatContextType {
   isConnected: boolean;
   inputText: string;
   setInputText: (text: string) => void;
-  sendMessage: (content: string) => Promise<void>;
+  sendMessage: (content: string, messageType?: "text" | "audio") => Promise<void>;
   sendAudioMessage: (audioUri: string) => Promise<void>;
   createNewChat: () => Promise<string>;
   loadChatSession: (chatId: string) => Promise<void>;

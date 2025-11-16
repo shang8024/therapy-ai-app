@@ -23,6 +23,8 @@ export async function sendMessageToAI(
   message: string,
   chatId: string,
   userId: string,
+  userMessageId: string,
+  aiMessageId: string,
   conversationHistory: ChatMessage[] = [],
   onChunk: (content: string) => void,
   onComplete: (fullResponse: string) => void,
@@ -44,6 +46,13 @@ export async function sendMessageToAI(
       const xhr = new XMLHttpRequest();
       let fullResponse = '';
       let lastIndex = 0;
+      let hasCompleted = false;
+      const finishStream = (response: string) => {
+        if (hasCompleted) return;
+        hasCompleted = true;
+        onComplete(response);
+        resolve();
+      };
 
       xhr.open('POST', 'https://hhquqcuqeadsrozlrjpj.supabase.co/functions/v1/Groq-LLM', true);
       xhr.setRequestHeader('Content-Type', 'application/json');
@@ -63,8 +72,7 @@ export async function sendMessageToAI(
               
               if (data === '[DONE]') {
                 console.log('Stream completed, full response:', fullResponse);
-                onComplete(fullResponse);
-                resolve();
+                finishStream(fullResponse);
                 return;
               }
 
@@ -85,9 +93,11 @@ export async function sendMessageToAI(
       xhr.onload = () => {
         console.log('XHR onload, status:', xhr.status);
         if (xhr.status === 200) {
+          if (hasCompleted) {
+            return;
+          }
           if (fullResponse) {
-            onComplete(fullResponse);
-            resolve();
+            finishStream(fullResponse);
           } else {
             const error = new Error('No response received from AI');
             onError(error);
@@ -126,6 +136,8 @@ export async function sendMessageToAI(
         message,
         chatId,
         userId,
+        userMessageId,
+        aiMessageId,
         conversationHistory: conversationHistory.slice(-10),
       });
 

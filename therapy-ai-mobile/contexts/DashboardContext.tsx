@@ -12,6 +12,7 @@ import { useDatabase } from "./DatabaseContext";
 import { useAuth } from "./AuthContext";
 import { Message } from "../types/chat";
 import * as SupabaseService from "../lib/supabase-services";
+import { getCheckins } from "../lib/supabase-services";
 
 export interface DashboardStatistics {
   totalCheckins: number;
@@ -53,7 +54,8 @@ type DashboardContextValue = {
   chatTrend30Days: ChatTrendData | null;
   loading: boolean;
   error: string | null;
-  refreshData: () => Promise<void>;
+  refreshData: (syncFirst?: boolean) => Promise<void>;
+  syncFromCloud: () => Promise<void>;
   selectedTimeRange: "7days" | "30days";
   setSelectedTimeRange: (range: "7days" | "30days") => void;
   dashboardType: DashboardType;
@@ -220,44 +222,110 @@ export const DashboardProvider: React.FC<Props> = ({ children }) => {
   >("7days");
   const [dashboardType, setDashboardType] = useState<DashboardType>("checkins");
 
-  const refreshData = useCallback(async () => {
-    if (!isInitialized || !user?.id) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      // Fetch check-in statistics and mood trends
-      const [stats, trend7Days, trend30Days] = await Promise.all([
-        database.getCheckinStatistics(),
-        database.getMoodTrendData(7),
-        database.getMoodTrendData(30),
-      ]);
-
-      setStatistics(stats);
-      setMoodTrend7Days(trend7Days);
-      setMoodTrend30Days(trend30Days);
-
-      // Fetch chat messages and calculate chat statistics
-      const allMessages = await getAllChatMessages(user.id);
-      const chatStats = calculateChatStatistics(allMessages);
-      const [chatTrend7, chatTrend30] = await Promise.all([
-        getChatTrendData(allMessages, 7),
-        getChatTrendData(allMessages, 30),
-      ]);
-
-      setChatStatistics(chatStats);
-      setChatTrend7Days(chatTrend7);
-      setChatTrend30Days(chatTrend30);
-    } catch (err) {
-      console.error("Failed to load dashboard data:", err);
-      setError(
-        err instanceof Error ? err.message : "Failed to load dashboard data"
+  const syncFromCloud = useCallback(async () => {
+    if (!user?.id || !isInitialized) {
+      // eslint-disable-next-line no-console
+      console.log(
+        "DashboardContext: Cannot sync - user not authenticated or database not initialized"
       );
-    } finally {
-      setLoading(false);
+      return;
     }
-  }, [isInitialized, user?.id]);
+    try {
+      const cloudCheckins = await getCheckins(user.id);
+
+      if (cloudCheckins.length > 0) {
+        for (const cloudCheckin of cloudCheckins) {
+          try {
+            const localExisting = await database.getCheckinEntryByDate(
+              cloudCheckin.date
+            );
+            if (localExisting) {
+              await database.updateCheckinEntry(
+                localExisting.id,
+                cloudCheckin.mood,
+                cloudCheckin.notes ?? null
+              );
+            } else {
+              await database.createCheckinEntry(
+                cloudCheckin.mood,
+                cloudCheckin.notes ?? null,
+                cloudCheckin.date
+              );
+            }
+          } catch (syncError) {
+            // eslint-disable-next-line no-console
+            console.warn(
+              `Failed to sync check-in for date ${cloudCheckin.date}:`,
+              syncError
+            );
+          }
+        }
+
+        // eslint-disable-next-line no-console
+        console.log("DashboardContext: Cloud sync completed successfully");
+      } else {
+        // eslint-disable-next-line no-console
+        console.log("DashboardContext: No check-ins found in cloud");
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("DashboardContext: Failed to sync from cloud:", err);
+      throw err;
+    }
+  }, [user?.id, isInitialized]);
+
+  const refreshData = useCallback(
+    async (syncFirst?: boolean) => {
+      if (!isInitialized || !user?.id) return;
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        // Optionally sync from cloud first
+        if (syncFirst) {
+          try {
+            await syncFromCloud();
+          } catch (syncErr) {
+            // eslint-disable-next-line no-console
+            console.warn("Failed to sync before refresh:", syncErr);
+          }
+        }
+
+        // Fetch check-in statistics and mood trends
+        const [stats, trend7Days, trend30Days] = await Promise.all([
+          database.getCheckinStatistics(),
+          database.getMoodTrendData(7),
+          database.getMoodTrendData(30),
+        ]);
+
+        setStatistics(stats);
+        setMoodTrend7Days(trend7Days);
+        setMoodTrend30Days(trend30Days);
+
+        // Fetch chat messages and calculate chat statistics
+        const allMessages = await getAllChatMessages(user.id);
+        const chatStats = calculateChatStatistics(allMessages);
+        const [chatTrend7, chatTrend30] = await Promise.all([
+          getChatTrendData(allMessages, 7),
+          getChatTrendData(allMessages, 30),
+        ]);
+
+        setChatStatistics(chatStats);
+        setChatTrend7Days(chatTrend7);
+        setChatTrend30Days(chatTrend30);
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error("Failed to load dashboard data:", err);
+        setError(
+          err instanceof Error ? err.message : "Failed to load dashboard data"
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [isInitialized, user?.id, syncFromCloud]
+  );
 
   useEffect(() => {
     refreshData();
@@ -274,6 +342,7 @@ export const DashboardProvider: React.FC<Props> = ({ children }) => {
       loading: loading || dbLoading,
       error,
       refreshData,
+      syncFromCloud,
       selectedTimeRange,
       setSelectedTimeRange,
       dashboardType,
@@ -290,6 +359,7 @@ export const DashboardProvider: React.FC<Props> = ({ children }) => {
       dbLoading,
       error,
       refreshData,
+      syncFromCloud,
       selectedTimeRange,
       setSelectedTimeRange,
       dashboardType,

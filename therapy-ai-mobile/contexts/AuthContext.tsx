@@ -3,6 +3,7 @@ import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { createUserProfile } from '../lib/supabase-services';
 import { performFullSyncToCloud } from '../lib/sync-manager';
+import { database } from '../utils/database';
 
 interface AuthContextValue {
   session: Session | null;
@@ -25,9 +26,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.warn('Session error:', error.message);
+        // If refresh token is invalid, clear the session
+        if (error.message.includes('Refresh Token')) {
+          console.log('Clearing invalid session...');
+          supabase.auth.signOut().catch(console.error);
+        }
+      }
       setSession(session);
       setUser(session?.user ?? null);
+      setLoading(false);
+    }).catch((error) => {
+      console.error('Failed to get session:', error);
       setLoading(false);
     });
 
@@ -84,7 +96,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      await database.clearCurrentUserData();
+    } catch (error) {
+      console.error('Failed to clear local data during sign out:', error);
+    } finally {
+      await supabase.auth.signOut();
+    }
   };
 
   const syncData = async () => {

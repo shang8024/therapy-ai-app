@@ -48,5 +48,19 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     persistSession: true, // ← Keep user logged in across app restarts
     detectSessionInUrl: false, // ← Not needed for mobile (web only)
   },
+  global: {
+    headers: {
+      'X-Client-Info': 'therapy-ai-mobile',
+    },
+  },
+});
+
+// Handle global auth errors
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'TOKEN_REFRESHED') {
+    console.log('✅ Token refreshed successfully');
+  } else if (event === 'SIGNED_OUT') {
+    console.log('User signed out');
+  }
 });
 

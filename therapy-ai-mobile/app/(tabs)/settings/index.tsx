@@ -30,6 +30,8 @@ import { Platform, Alert } from "react-native";
 import Disclaimer from "@/components/legal/Disclaimer";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { database } from "@/utils/database";
+import { commonStyles } from "@/styles/common";
 
 interface SettingItemProps {
   title: string;
@@ -88,7 +90,7 @@ const SettingSection: React.FC<{
   return (
     <View style={styles.section}>
       <Text
-        style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}
+        style={[styles.sectionTitleSettings, { color: theme.colors.textSecondary }]}
       >
         {title}
       </Text>
@@ -109,8 +111,9 @@ export default function SettingsScreen() {
   const [biometricsEnabled, setBiometricsEnabled] = React.useState(false);
   const [loadingNotif, setLoadingNotif] = React.useState(false);
   const [syncing, setSyncing] = React.useState(false);
+  const [clearingLocal, setClearingLocal] = React.useState(false);
   const { theme, isDarkMode, toggleTheme } = useTheme();
-  const { user, signOut, syncData } = useAuth();
+  const { user, signOut } = useAuth();
 
   React.useEffect(() => {
     if (!user?.id) return;
@@ -173,6 +176,39 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleClearLocalData = React.useCallback(() => {
+    Alert.alert(
+      "Clear Local Data",
+      "This will remove all cached journal entries, check-ins, and chat history stored on this device for the current account.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Clear",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setClearingLocal(true);
+              if (user) {
+                await database.clearCurrentUserData();
+              } else {
+                await database.clearAllData();
+              }
+              Alert.alert("Success", "Local data cleared successfully.");
+            } catch (error) {
+              console.error("Failed to clear local data:", error);
+              Alert.alert(
+                "Error",
+                "We could not clear local data. Please try again.",
+              );
+            } finally {
+              setClearingLocal(false);
+            }
+          },
+        },
+      ],
+    );
+  }, [user]);
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.colors.background }]}
@@ -182,9 +218,9 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View
-          style={[styles.header, { borderBottomColor: theme.colors.border }]}
+          style={[styles.headerSettings, { borderBottomColor: theme.colors.border }]}
         >
-          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
+          <Text style={[styles.headerTitleSettings, { color: theme.colors.text }]}>
             Settings
           </Text>
           <Text
@@ -243,23 +279,13 @@ export default function SettingsScreen() {
           />
           {user && (
             <SettingItem
-              title="Sync to Cloud"
-              description="Backup your data to the cloud"
-              onPress={async () => {
-                setSyncing(true);
-                try {
-                  await syncData();
-                  Alert.alert("Success", "Your data has been synced to the cloud!");
-                } catch (error) {
-                  Alert.alert("Error", "Failed to sync data. Please try again.");
-                } finally {
-                  setSyncing(false);
-                }
-              }}
+              title="Cloud Sync"
+              description="Automatically syncing to cloud"
               rightComponent={
-                syncing ? <ActivityIndicator size="small" color={theme.colors.primary} /> : null
+                <Text style={{ color: theme.colors.success || '#10b981', fontWeight: '600' }}>
+                  ✓ Enabled
+                </Text>
               }
-              showArrow={!syncing}
             />
           )}
           <SettingItem
@@ -282,6 +308,20 @@ export default function SettingsScreen() {
               );
             }}
             showArrow
+          />
+        </SettingSection>
+
+        <SettingSection title="Data Tools">
+          <SettingItem
+            title="Clear Local Data"
+            description="Remove all cached entries stored on this device for this account"
+            onPress={clearingLocal ? undefined : handleClearLocalData}
+            rightComponent={
+              clearingLocal ? (
+                <ActivityIndicator size="small" color={theme.colors.primary} />
+              ) : undefined
+            }
+            showArrow={!clearingLocal}
           />
         </SettingSection>
 
@@ -342,40 +382,27 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  ...commonStyles,
   scrollView: {
     flex: 1,
   },
-  header: {
+  headerSettings: {
     padding: 20,
     paddingBottom: 30,
     borderBottomWidth: 1,
   },
-  headerTitle: {
+  headerTitleSettings: {
     fontSize: 32,
     fontWeight: "bold",
     marginBottom: 5,
   },
-  headerSubtitle: {
-    fontSize: 16,
-  },
-  section: {
-    marginTop: 20,
-  },
-  sectionTitle: {
+  sectionTitleSettings: {
     fontSize: 16,
     fontWeight: "600",
     marginLeft: 20,
     marginBottom: 10,
     textTransform: "uppercase",
     letterSpacing: 0.5,
-  },
-  sectionContent: {
-    borderRadius: 12,
-    marginHorizontal: 15,
-    overflow: "hidden",
   },
   settingItem: {
     flexDirection: "row",

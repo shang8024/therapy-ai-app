@@ -7,17 +7,18 @@ import {
   Text,
   StyleSheet,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { Audio } from "expo-av";
 import { useChat } from "../../contexts/ChatContext";
 import { useTheme } from "../../contexts/ThemeContext";
+import { speechToText } from "../../lib/groq-audio";
 
-type RecordingState = "idle" | "recording" | "stopped";
+type RecordingState = "idle" | "recording" | "stopped" | "transcribing";
 
 export default function ChatInput() {
   const { theme } = useTheme();
-  const { inputText, setInputText, sendMessage, sendAudioMessage, isLoading } =
-    useChat();
+  const { inputText, setInputText, sendMessage, isLoading } = useChat();
   const [isFocused, setIsFocused] = useState(false);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [recordingState, setRecordingState] = useState<RecordingState>("idle");
@@ -49,7 +50,7 @@ export default function ChatInput() {
                 /* Could open device settings */
               },
             },
-          ],
+          ]
         );
         return false;
       }
@@ -70,7 +71,7 @@ export default function ChatInput() {
       }
 
       setRecordingState("recording"); // Set state immediately for UI feedback
-      
+
       const hasPermission = await checkMicrophonePermission();
       if (!hasPermission) {
         setRecordingState("idle"); // Reset if permission denied
@@ -84,9 +85,9 @@ export default function ChatInput() {
       });
 
       const { recording: newRecording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY,
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
       );
-      
+
       setRecording(newRecording);
       // Keep recording state as "recording" since we set it earlier
     } catch {
@@ -100,30 +101,51 @@ export default function ChatInput() {
     if (!recording || recordingState !== "recording") return;
 
     try {
+      // Stop recording
       await recording.stopAndUnloadAsync();
       const uri = recording.getURI();
-      setRecordingState("stopped");
-      setRecording(null); // Clear the recording reference immediately
-      
-      // Send audio message directly instead of transcribing
-      if (uri) {
-        await sendAudioMessage(uri);
+      setRecording(null);
+
+      if (!uri) {
+        throw new Error("No audio URI");
       }
-      
-      // Reset state after sending
-      setRecordingState("idle");
-    } catch {
-      // Reset state even if stopping fails
+
+      // Transcribe audio to text
+      setRecordingState("transcribing");
+
+      try {
+        const transcribedText = await speechToText(uri);
+        if (!transcribedText || transcribedText.trim() === "") {
+          Alert.alert("No Speech Detected", "Please try speaking again.");
+          setRecordingState("idle");
+          return;
+        }
+
+        // Send the transcribed text as audio message (shows as voice bubble)
+        setRecordingState("idle");
+        await sendMessage(transcribedText.trim(), "audio");
+      } catch (transcriptionError) {
+        console.error("Transcription failed:", transcriptionError);
+        // Send error message as failed transcription
+        setRecordingState("idle");
+        await sendMessage("❌ Transcription failed", "audio");
+        Alert.alert(
+          "Transcription Failed",
+          "Could not convert speech to text. Please try again or type your message."
+        );
+      }
+    } catch (error) {
+      console.error("Stop recording error:", error);
       setRecordingState("idle");
       setRecording(null);
-      Alert.alert("Error", "Failed to stop recording. Please try again.");
+      Alert.alert("Error", "Failed to process recording. Please try again.");
     }
   };
 
   const handleMicrophonePress = async () => {
     // Prevent rapid tapping
     if (isLoading) return;
-    
+
     if (recordingState === "idle") {
       await startRecording();
     } else if (recordingState === "recording") {
@@ -141,15 +163,26 @@ export default function ChatInput() {
   const showMicButton =
     inputText.trim() === "" &&
     (recordingState === "idle" || recordingState === "recording");
-  const showSendButton =
-    inputText.trim() !== "" || recordingState === "stopped";
+  const showSendButton = inputText.trim() !== "" && recordingState === "idle";
+  const isTranscribing = recordingState === "transcribing";
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.border }]}>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: theme.colors.surface,
+          borderTopColor: theme.colors.border,
+        },
+      ]}
+    >
       <View
         style={[
           styles.inputContainer,
-          { backgroundColor: theme.colors.background, borderColor: theme.colors.border },
+          {
+            backgroundColor: theme.colors.background,
+            borderColor: theme.colors.border,
+          },
           isFocused && { borderColor: theme.colors.primary },
           recordingState === "recording" && { borderColor: "#ff0000" },
         ]}
@@ -161,17 +194,25 @@ export default function ChatInput() {
           placeholder={
             recordingState === "recording"
               ? "Recording..."
-              : "Share what's on your mind..."
+              : recordingState === "transcribing"
+                ? "Transcribing..."
+                : "Share what's on your mind..."
           }
           placeholderTextColor={theme.colors.textSecondary}
           multiline
           maxLength={1000}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
-          editable={!isLoading && recordingState !== "recording"}
+          editable={!isLoading && recordingState === "idle"}
         />
-        
-        {showMicButton && (
+
+        {isTranscribing && (
+          <View style={styles.micButton}>
+            <ActivityIndicator size="small" color={theme.colors.primary} />
+          </View>
+        )}
+
+        {showMicButton && !isTranscribing && (
           <Pressable
             style={[
               styles.micButton,
@@ -190,20 +231,15 @@ export default function ChatInput() {
           <Pressable
             style={[
               styles.sendButton,
-              (!inputText.trim() || isLoading) &&
-                recordingState === "idle" &&
-                styles.sendButtonDisabled,
+              (!inputText.trim() || isLoading) && styles.sendButtonDisabled,
             ]}
             onPress={handleSend}
-            disabled={
-              (!inputText.trim() || isLoading) && recordingState === "idle"
-            }
+            disabled={!inputText.trim() || isLoading}
           >
             <Text
               style={[
                 styles.sendButtonText,
                 (!inputText.trim() || isLoading) &&
-                  recordingState === "idle" &&
                   styles.sendButtonTextDisabled,
               ]}
             >
@@ -212,13 +248,26 @@ export default function ChatInput() {
           </Pressable>
         )}
       </View>
-      
+
       {recordingState === "recording" && (
-        <Text style={styles.recordingIndicator}>
+        <Text
+          style={[
+            styles.recordingIndicator,
+            { color: theme.colors.textSecondary },
+          ]}
+        >
           🔴 Recording... Tap the stop button when finished
         </Text>
       )}
-      
+
+      {recordingState === "transcribing" && (
+        <Text
+          style={[styles.recordingIndicator, { color: theme.colors.primary }]}
+        >
+          Converting speech to text...
+        </Text>
+      )}
+
       <Text style={styles.disclaimer}>
         This AI companion provides emotional support but is not a replacement
         for professional therapy.
@@ -230,7 +279,8 @@ export default function ChatInput() {
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 12,
+    paddingBottom: 16,
     backgroundColor: "white",
     borderTopWidth: 1,
     borderTopColor: "#E0E0E0",

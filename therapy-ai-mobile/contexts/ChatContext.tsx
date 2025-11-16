@@ -11,6 +11,16 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Message, ChatSession, ChatContextType } from "../types/chat";
 import { sendMessageToAI } from "../lib/groq-service";
 import { useAuth } from "./AuthContext";
+import {
+  getChatSessions as getChatSessionsCloud,
+  createChatSession as createChatSessionCloud,
+  updateChatSession as updateChatSessionCloud,
+  deleteChatSession as deleteChatSessionCloud,
+  getMessages as getMessagesCloud,
+  ChatSessionDB,
+} from "../lib/supabase-services";
+import { queueMessageForSync, processQueueInBackground } from "../lib/message-sync-queue";
+import { textToSpeech } from "../lib/groq-audio";
 
 // Crisis detection keywords
 const CRISIS_KEYWORDS = [
@@ -113,97 +123,215 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
+function mapCloudSession(session: ChatSessionDB): ChatSession {
+  return {
+    id: session.id,
+    title: session.title,
+    createdAt: new Date(session.created_at),
+    lastMessage: session.last_message ?? undefined,
+    lastMessageAt: session.last_message_at ? new Date(session.last_message_at) : undefined,
+    messageCount: session.message_count ?? 0,
+    isPinned: session.is_pinned ?? undefined,
+    pinnedAt: session.pinned_at ? new Date(session.pinned_at) : undefined,
+  };
+}
+
 export function ChatProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(chatReducer, initialState);
   const { user } = useAuth();
-  const currentUserId = user?.id || null;
+  const currentUserId = user?.id ?? null;
 
-  // Clear state when user logs out
+  const getSessionsKey = useCallback(() => {
+    if (!currentUserId) return null;
+    return `appv1:${currentUserId}:chatSessions`;
+  }, [currentUserId]);
+
+  const getMessagesKey = useCallback(
+    (chatId: string) => {
+      if (!currentUserId) return null;
+      return `appv1:${currentUserId}:messages:${chatId}`;
+    },
+    [currentUserId],
+  );
+
   useEffect(() => {
     if (!currentUserId) {
+      dispatch({ type: "CLEAR_CURRENT_CHAT" });
       dispatch({ type: "SET_CHAT_SESSIONS", payload: [] });
       dispatch({ type: "SET_MESSAGES", payload: [] });
-      dispatch({ type: "CLEAR_CURRENT_CHAT" });
     }
   }, [currentUserId]);
 
-  // Load data from AsyncStorage when user is available
+  // Load chat sessions from Supabase (fallback to AsyncStorage)
   useEffect(() => {
     const loadChatSessions = async () => {
-      if (!currentUserId) return;
-
+      let sessions: ChatSession[] | null = null;
       try {
-        const sessionsData = await AsyncStorage.getItem(`appv1:chatSessions:${currentUserId}`);
-        if (sessionsData) {
-          const sessions: ChatSession[] = JSON.parse(sessionsData).map(
-            (session: any) => ({
+        if (!currentUserId) {
+          dispatch({ type: "SET_CHAT_SESSIONS", payload: [] });
+          return;
+        }
+
+        const storageKey = getSessionsKey();
+        if (!storageKey) return;
+
+        try {
+          const cloudSessions = await getChatSessionsCloud(currentUserId);
+          sessions = cloudSessions.map(mapCloudSession);
+          await AsyncStorage.setItem(storageKey, JSON.stringify(sessions));
+        } catch (error) {
+          console.warn("Failed to load chat sessions from Supabase:", error);
+        }
+
+        if (!sessions) {
+          const sessionsData = await AsyncStorage.getItem(storageKey);
+          if (sessionsData) {
+            sessions = JSON.parse(sessionsData).map((session: any) => ({
               ...session,
               createdAt: new Date(session.createdAt),
               lastMessageAt: session.lastMessageAt
                 ? new Date(session.lastMessageAt)
                 : undefined,
-            }),
-          );
-          dispatch({ type: "SET_CHAT_SESSIONS", payload: sessions });
+              pinnedAt: session.pinnedAt ? new Date(session.pinnedAt) : undefined,
+            }));
+          }
         }
-      } catch {
-        // Error loading chat sessions - silently handle
+
+        dispatch({ type: "SET_CHAT_SESSIONS", payload: sessions ?? [] });
+      } catch (error) {
+        console.error("Failed to load chat sessions:", error);
+        dispatch({ type: "SET_CHAT_SESSIONS", payload: [] });
       }
     };
 
     loadChatSessions();
-  }, [currentUserId]); // Reload when user changes
+  }, [currentUserId, getSessionsKey]);
 
   const saveChatSessions = useCallback(async (sessions: ChatSession[]) => {
     if (!currentUserId) return;
 
     try {
-      await AsyncStorage.setItem(
-        `appv1:chatSessions:${currentUserId}`,
-        JSON.stringify(sessions),
-      );
+      const storageKey = getSessionsKey();
+      if (!storageKey) return;
+
+      await AsyncStorage.setItem(storageKey, JSON.stringify(sessions));
     } catch {
       // Error saving chat sessions - silently handle
     }
-  }, [currentUserId]);
+  }, [currentUserId, getSessionsKey]);
 
-  const loadChatMessages = useCallback(async (chatId: string) => {
-    if (!currentUserId) return;
-
-    try {
-      const messagesData = await AsyncStorage.getItem(
-        `appv1:messages:${currentUserId}:${chatId}`,
-      );
-      if (messagesData) {
-        const messages: Message[] = JSON.parse(messagesData).map(
-          (msg: any) => ({
-            ...msg,
-            timestamp: new Date(msg.timestamp),
-          }),
-        );
-        dispatch({ type: "SET_MESSAGES", payload: messages });
-      } else {
+  const loadChatMessages = useCallback(
+    async (chatId: string) => {
+      if (!currentUserId) {
         dispatch({ type: "SET_MESSAGES", payload: [] });
+        return;
       }
-    } catch {
-      // Error loading messages - silently handle
-    }
-  }, [currentUserId]);
+
+      const storageKey = getMessagesKey(chatId);
+
+      try {
+        const cloudMessages = await getMessagesCloud(chatId);
+        console.log(`📥 Loaded ${cloudMessages.length} messages from cloud for chat ${chatId}`);
+        
+        const mapped = cloudMessages.map((msg) => ({
+          id: msg.id,
+          chatId: msg.chat_id,
+          content: msg.content,
+          role: msg.role,
+          timestamp: new Date(msg.created_at),
+          audioUri: msg.audio_uri ?? undefined,
+          messageType: (msg.message_type as "text" | "audio") ?? "text",
+        }));
+        
+        // Deduplicate messages by ID (keep the latest version)
+        const messageMap = new Map<string, Message>();
+        for (const msg of mapped) {
+          const existing = messageMap.get(msg.id);
+          if (!existing || msg.timestamp >= existing.timestamp) {
+            messageMap.set(msg.id, msg);
+          }
+        }
+        
+        // Convert back to array and sort by timestamp
+        const uniqueMessages = Array.from(messageMap.values())
+          .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+        
+        console.log(`✅ After deduplication: ${uniqueMessages.length} unique messages`);
+        
+        dispatch({ type: "SET_MESSAGES", payload: uniqueMessages });
+        if (storageKey) {
+          await AsyncStorage.setItem(storageKey, JSON.stringify(uniqueMessages));
+        }
+        return;
+      } catch (error) {
+        console.warn(`Failed to load messages for chat ${chatId} from Supabase:`, error);
+      }
+
+      if (storageKey) {
+        try {
+          const messagesData = await AsyncStorage.getItem(storageKey);
+          if (messagesData) {
+            const messages: Message[] = JSON.parse(messagesData).map(
+              (msg: any) => ({
+                ...msg,
+                timestamp: new Date(msg.timestamp),
+              }),
+            );
+            
+            // Deduplicate messages by ID
+            const uniqueMessages = Array.from(
+              new Map(messages.map(msg => [msg.id, msg])).values()
+            );
+            
+            dispatch({ type: "SET_MESSAGES", payload: uniqueMessages });
+            return;
+          }
+        } catch (error) {
+          console.warn(`Failed to load messages for chat ${chatId} from local storage:`, error);
+        }
+      }
+
+      dispatch({ type: "SET_MESSAGES", payload: [] });
+    },
+    [currentUserId, getMessagesKey],
+  );
 
   const saveChatMessages = useCallback(
     async (chatId: string, messages: Message[]) => {
       if (!currentUserId) return;
 
       try {
-        await AsyncStorage.setItem(
-          `appv1:messages:${currentUserId}:${chatId}`,
-          JSON.stringify(messages),
-        );
-      } catch {
-        // Error saving messages - silently handle
+        const storageKey = getMessagesKey(chatId);
+        if (!storageKey) return;
+
+        // Save to local storage first (always works offline)
+        await AsyncStorage.setItem(storageKey, JSON.stringify(messages));
+
+        // Queue messages for background sync to cloud (backup if Edge Function fails or offline)
+        // Since we use same IDs, database PRIMARY KEY prevents duplicates
+        if (user?.id) {
+          const recentMessages = messages.slice(-2); // Last 2 messages
+          
+          for (const msg of recentMessages) {
+            await queueMessageForSync(
+              user.id,
+              chatId,
+              msg.id,
+              msg.content,
+              msg.role,
+              msg.messageType || 'text',
+              msg.audioUri || null
+            );
+          }
+          
+          // Process queue in background (non-blocking)
+          processQueueInBackground();
+        }
+      } catch (error) {
+        console.error('Error saving messages:', error);
       }
     },
-    [currentUserId],
+    [currentUserId, getMessagesKey, user?.id],
   );
 
   const detectCrisisKeywords = useCallback((text: string): boolean => {
@@ -214,20 +342,32 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const createNewChat = useCallback(async (): Promise<string> => {
+    if (!user?.id) {
+      throw new Error("Cannot create chat: no authenticated user");
+    }
+
     const chatId = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const newSession: ChatSession = {
+    let newSession: ChatSession = {
       id: chatId,
       title: "New Conversation",
       createdAt: new Date(),
       messageCount: 0,
+      isPinned: false,
     };
+
+    try {
+      const cloudSession = await createChatSessionCloud(user.id, chatId, newSession.title);
+      newSession = mapCloudSession(cloudSession);
+    } catch (error) {
+      console.warn("Failed to create chat session in Supabase:", error);
+    }
 
     const updatedSessions = [newSession, ...state.chatSessions];
     dispatch({ type: "ADD_CHAT_SESSION", payload: newSession });
     await saveChatSessions(updatedSessions);
 
     return chatId;
-  }, [state.chatSessions, saveChatSessions]);
+  }, [state.chatSessions, saveChatSessions, user?.id]);
 
   const loadChatSession = useCallback(
     async (chatId: string) => {
@@ -240,14 +380,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   // This function is now replaced by Groq AI streaming
 
   const sendMessage = useCallback(
-    async (content: string) => {
+    async (content: string, messageType: 'text' | 'audio' = 'text') => {
       if (!state.currentChatId || !content.trim() || !currentUserId) return;
 
       dispatch({ type: "SET_LOADING", payload: true });
       dispatch({ type: "SET_CONNECTED", payload: true });
 
-      // Check for crisis keywords
-      if (detectCrisisKeywords(content)) {
+      // Check for crisis keywords (only for non-loading messages)
+      if (content !== "Transcribing..." && detectCrisisKeywords(content)) {
         // TODO: Trigger crisis resource modal
         console.warn('Crisis keywords detected');
       }
@@ -258,6 +398,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         role: "user",
         timestamp: new Date(),
         chatId: state.currentChatId,
+        messageType,
       };
 
       dispatch({ type: "ADD_MESSAGE", payload: userMessage });
@@ -288,10 +429,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       dispatch({ type: "ADD_MESSAGE", payload: aiMessage });
 
       // Send to Groq AI via Edge Function
+      // Note: Edge Function will save messages to Supabase, but we also save from client for redundancy
       await sendMessageToAI(
         content.trim(),
         state.currentChatId,
         currentUserId,
+        userMessage.id,
+        aiMessageId,
         conversationHistory,
         // On chunk received
         (chunk: string) => {
@@ -304,7 +448,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         },
         // On complete
         async (fullResponse: string) => {
-          const finalAiMessage = { ...aiMessage, content: fullResponse };
+          let finalAiMessage = { ...aiMessage, content: fullResponse };
           
           // Update session with last message info
           const updatedSessions = state.chatSessions.map((session) =>
@@ -325,11 +469,49 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           dispatch({ type: "SET_CHAT_SESSIONS", payload: updatedSessions });
           await saveChatSessions(updatedSessions);
 
+          // Save final messages (both user and AI) - will sync to cloud in background
           const finalMessages = [...currentMessages, finalAiMessage];
           await saveChatMessages(state.currentChatId!, finalMessages);
 
+          // Update state with text-only message first
+          dispatch({ type: "SET_MESSAGES", payload: finalMessages });
+
+          // Update chat session metadata in cloud
+          try {
+            await updateChatSessionCloud(state.currentChatId!, {
+              last_message: fullResponse.substring(0, 50) + "...",
+              last_message_at: new Date().toISOString(),
+              message_count: updatedSessions.find((session) => session.id === state.currentChatId)?.messageCount ?? 0,
+              title:
+                updatedSessions.find((session) => session.id === state.currentChatId)?.title ??
+                "New Conversation",
+            });
+          } catch (error) {
+            console.warn("Failed to update chat session metadata in Supabase:", error);
+          }
+
           dispatch({ type: "SET_LOADING", payload: false });
           dispatch({ type: "SET_CONNECTED", payload: false });
+
+          // Generate voice response for AI (TTS) - ONLY if user sent a voice message
+          if (messageType === 'audio') {
+            try {
+              console.log('Generating voice for AI response (user sent voice)...');
+              const audioUri = await textToSpeech(fullResponse);
+              finalAiMessage = { ...finalAiMessage, audioUri, messageType: 'text' };
+              console.log('Voice generated successfully, updating message...');
+              
+              // Update the message in state with audio
+              const messagesWithAudio = [...currentMessages, finalAiMessage];
+              dispatch({ type: "SET_MESSAGES", payload: messagesWithAudio });
+              
+              // Save updated message with audio
+              await saveChatMessages(state.currentChatId!, messagesWithAudio);
+            } catch (error) {
+              console.warn('Failed to generate voice, using text only:', error);
+              // Continue without voice - text response still works
+            }
+          }
         },
         // On error
         (error: Error) => {
@@ -355,12 +537,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       detectCrisisKeywords,
       saveChatSessions,
       saveChatMessages,
+      user?.id,
     ],
   );
 
   const sendAudioMessage = useCallback(
     async (audioUri: string) => {
-      if (!state.currentChatId) return;
+      if (!state.currentChatId || !user?.id) return;
 
       dispatch({ type: "SET_LOADING", payload: true });
 
@@ -423,6 +606,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       state.messages,
       saveChatSessions,
       saveChatMessages,
+      user?.id,
     ],
   );
 
@@ -440,20 +624,26 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
       try {
         dispatch({ type: "DELETE_CHAT_SESSION", payload: chatId });
-        
-        // Update AsyncStorage
-        const updatedSessions = state.chatSessions.filter(
-          (session) => session.id !== chatId,
-        );
+
+        if (user?.id) {
+          try {
+            await deleteChatSessionCloud(chatId);
+          } catch (error) {
+            console.warn("Failed to delete chat session from Supabase:", error);
+          }
+        }
+
+        const updatedSessions = state.chatSessions.filter((session) => session.id !== chatId);
         await saveChatSessions(updatedSessions);
-        
-        // Remove chat messages
-        await AsyncStorage.removeItem(`appv1:messages:${currentUserId}:${chatId}`);
+        const messageKey = getMessagesKey(chatId);
+        if (messageKey) {
+          await AsyncStorage.removeItem(messageKey);
+        }
       } catch {
         // Handle error silently or use proper error reporting
       }
     },
-    [currentUserId, state.chatSessions, saveChatSessions],
+    [currentUserId, getMessagesKey, saveChatSessions, state.chatSessions, user?.id],
   );
 
   const togglePinChatSession = useCallback(
@@ -473,11 +663,25 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
         dispatch({ type: "SET_CHAT_SESSIONS", payload: updatedSessions });
         await saveChatSessions(updatedSessions);
+
+        if (user?.id) {
+          const toggled = updatedSessions.find((session) => session.id === chatId);
+          if (toggled) {
+            try {
+              await updateChatSessionCloud(chatId, {
+                is_pinned: toggled.isPinned ?? false,
+                pinned_at: toggled.isPinned ? new Date().toISOString() : null,
+              });
+            } catch (error) {
+              console.warn("Failed to update pin state in Supabase:", error);
+            }
+          }
+        }
       } catch {
         // Handle error silently or use proper error reporting
       }
     },
-    [state.chatSessions, saveChatSessions],
+    [saveChatSessions, state.chatSessions, user?.id],
   );
 
   const value: ChatContextType = {

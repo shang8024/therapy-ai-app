@@ -2,6 +2,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export interface JournalEntry {
   id: number;
+  userId: string;
+  userEmail: string | null;
   title: string;
   content: string;
   createdAt: string;
@@ -10,6 +12,8 @@ export interface JournalEntry {
 
 export interface CheckinEntry {
   id: number;
+  userId: string;
+  userEmail: string | null;
   mood: number;
   notes: string | null;
   date: string;
@@ -17,226 +21,258 @@ export interface CheckinEntry {
   updatedAt: string;
 }
 
-const makeKeys = (userId: string) =>
-  ({
-    journalEntries: `appv1:journal_entries:${userId}`,
-    checkinEntries: `appv1:checkin_entries:${userId}`,
-    counters: `appv1:database_counters:${userId}`,
-  }) as const;
-
 type Counters = {
   journalLastId: number;
   checkinLastId: number;
 };
 
-async function getCounters(userId: string): Promise<Counters> {
-  const KEYS = makeKeys(userId);
-  const raw = await AsyncStorage.getItem(KEYS.counters);
-  if (raw) return JSON.parse(raw) as Counters;
-  const initial: Counters = { journalLastId: 0, checkinLastId: 0 };
-  await AsyncStorage.setItem(KEYS.counters, JSON.stringify(initial));
-  return initial;
-}
-
-async function setCounters(userId: string, next: Counters): Promise<void> {
-  const KEYS = makeKeys(userId);
-  await AsyncStorage.setItem(KEYS.counters, JSON.stringify(next));
-}
-
-async function getArray<T>(key: string): Promise<T[]> {
-  const raw = await AsyncStorage.getItem(key);
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as T[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-async function setArray<T>(key: string, value: T[]): Promise<void> {
-  await AsyncStorage.setItem(key, JSON.stringify(value));
-}
-
 class AsyncDatabase {
   private initialized = false;
-  private currentUserId: string | null = null;
+  private user: { id: string; email: string | null } | null = null;
 
-  async init(userId: string): Promise<void> {
-    // If switching users, reset initialization
-    if (this.currentUserId !== userId) {
-      this.initialized = false;
-      this.currentUserId = userId;
+  private static readonly STORAGE_PREFIX = "appv1";
+  private static readonly KEYS = {
+    journalEntries: "journal_entries",
+    checkinEntries: "checkin_entries",
+    counters: "database_counters",
+  } as const;
+
+  private static readonly LEGACY_KEYS = [
+    "journal_entries",
+    "checkin_entries",
+    "database_counters",
+    "appv1:chatSessions",
+    "sync:last_sync_time",
+    "sync:pending_operations",
+    "sync:enabled",
+  ];
+
+  private ensureUser(): { id: string; email: string | null } {
+    if (!this.user) {
+      throw new Error("Database user not set");
     }
+    return this.user;
+  }
 
-    // Ensure storage keys exist
-    if (!this.initialized && userId) {
-      const KEYS = makeKeys(userId);
-      const [journals, checkins] = await Promise.all([
-        getArray<JournalEntry>(KEYS.journalEntries),
-        getArray<CheckinEntry>(KEYS.checkinEntries),
-      ]);
+  private makeKey(key: (typeof AsyncDatabase.KEYS)[keyof typeof AsyncDatabase.KEYS]): string {
+    const { id } = this.ensureUser();
+    return `${AsyncDatabase.STORAGE_PREFIX}:${id}:${key}`;
+  }
 
-      // Ensure arrays exist in storage (no sample data seeding)
-      if (journals.length === 0) {
-        await setArray(KEYS.journalEntries, []);
-      }
-
-      if (checkins.length === 0) {
-        await setArray(KEYS.checkinEntries, []);
-      }
-
-      this.initialized = true;
+  private async ensureArrayInitialized(key: (typeof AsyncDatabase.KEYS)[keyof typeof AsyncDatabase.KEYS]) {
+    const storageKey = this.makeKey(key);
+    const existing = await AsyncStorage.getItem(storageKey);
+    if (!existing) {
+      await AsyncStorage.setItem(storageKey, JSON.stringify([]));
     }
   }
 
-  async createJournalEntry(title: string, content: string): Promise<number> {
-    if (!this.initialized || !this.currentUserId)
-      throw new Error("Database not initialized");
-    const KEYS = makeKeys(this.currentUserId);
+  private async removeLegacyKeys() {
+    const allKeys = await AsyncStorage.getAllKeys();
+    const toRemove = allKeys.filter(
+      (key) =>
+        AsyncDatabase.LEGACY_KEYS.includes(key) ||
+        key.startsWith("appv1:messages:") ||
+        key.startsWith("appv1:chat:")
+    );
+
+    if (toRemove.length > 0) {
+      await AsyncStorage.multiRemove(toRemove);
+    }
+  }
+
+  private async getCounters(): Promise<Counters> {
+    const storageKey = this.makeKey(AsyncDatabase.KEYS.counters);
+    const raw = await AsyncStorage.getItem(storageKey);
+    if (raw) return JSON.parse(raw) as Counters;
+    const initial: Counters = { journalLastId: 0, checkinLastId: 0 };
+    await AsyncStorage.setItem(storageKey, JSON.stringify(initial));
+    return initial;
+  }
+
+  private async setCounters(next: Counters): Promise<void> {
+    await AsyncStorage.setItem(this.makeKey(AsyncDatabase.KEYS.counters), JSON.stringify(next));
+  }
+
+  private async getArray<T>(key: (typeof AsyncDatabase.KEYS)[keyof typeof AsyncDatabase.KEYS]): Promise<T[]> {
+    const raw = await AsyncStorage.getItem(this.makeKey(key));
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? (parsed as T[]) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  private async setArray<T>(key: (typeof AsyncDatabase.KEYS)[keyof typeof AsyncDatabase.KEYS], value: T[]): Promise<void> {
+    await AsyncStorage.setItem(this.makeKey(key), JSON.stringify(value));
+  }
+
+  private filterJournalEntries(entries: JournalEntry[]): JournalEntry[] {
+    const { id } = this.ensureUser();
+    return entries.filter((entry) => entry.userId === id);
+  }
+
+  private filterCheckinEntries(entries: CheckinEntry[]): CheckinEntry[] {
+    const { id } = this.ensureUser();
+    return entries.filter((entry) => entry.userId === id);
+  }
+
+  setUser(user: { id: string; email: string | null } | null) {
+    const nextId = user?.id ?? null;
+    const nextEmail = user?.email ?? null;
+    const currentId = this.user?.id ?? null;
+    const currentEmail = this.user?.email ?? null;
+
+    if (nextId === currentId && nextEmail === currentEmail) {
+      return;
+    }
+
+    this.user = user;
+    this.initialized = false;
+  }
+
+  async init(): Promise<void> {
+    if (this.initialized) {
+      return;
+    }
+
+    this.ensureUser();
+    await this.removeLegacyKeys();
+    await this.ensureArrayInitialized(AsyncDatabase.KEYS.journalEntries);
+    await this.ensureArrayInitialized(AsyncDatabase.KEYS.checkinEntries);
+    await this.getCounters();
+
+    this.initialized = true;
+  }
+
+  async createJournalEntry(
+    title: string,
+    content: string,
+    overrideId?: number,
+    metadata?: { createdAt?: string; updatedAt?: string; userEmail?: string | null }
+  ): Promise<number> {
+    if (!this.initialized) throw new Error("Database not initialized");
+    const { id: userId, email: userEmail } = this.ensureUser();
     const [entries, counters] = await Promise.all([
-      getArray<JournalEntry>(KEYS.journalEntries),
-      getCounters(this.currentUserId),
+      this.getArray<JournalEntry>(AsyncDatabase.KEYS.journalEntries),
+      this.getCounters(),
     ]);
     const now = new Date().toISOString();
-    const id = counters.journalLastId + 1;
+    const id = overrideId ?? counters.journalLastId + 1;
+    const filtered = entries.filter((entry) => entry.id !== id);
     const entry: JournalEntry = {
       id,
+      userId,
+      userEmail: metadata?.userEmail ?? userEmail,
       title,
       content,
-      createdAt: now,
-      updatedAt: now,
+      createdAt: metadata?.createdAt ?? now,
+      updatedAt: metadata?.updatedAt ?? now,
     };
-    entries.unshift(entry);
+    const updatedEntries = [entry, ...filtered].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     await Promise.all([
-      setArray(KEYS.journalEntries, entries),
-      setCounters(this.currentUserId, { ...counters, journalLastId: id }),
+      this.setArray(AsyncDatabase.KEYS.journalEntries, updatedEntries),
+      this.setCounters({ ...counters, journalLastId: Math.max(counters.journalLastId, id) }),
     ]);
     return id;
   }
 
   async getAllJournalEntries(): Promise<JournalEntry[]> {
-    if (!this.initialized || !this.currentUserId)
-      throw new Error("Database not initialized");
-    const KEYS = makeKeys(this.currentUserId);
-    const entries = await getArray<JournalEntry>(KEYS.journalEntries);
-    return entries.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    if (!this.initialized) throw new Error("Database not initialized");
+    const entries = await this.getArray<JournalEntry>(AsyncDatabase.KEYS.journalEntries);
+    return this.filterJournalEntries(entries).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
   async getJournalEntry(id: number): Promise<JournalEntry | null> {
-    if (!this.initialized || !this.currentUserId)
-      throw new Error("Database not initialized");
-    const KEYS = makeKeys(this.currentUserId);
-    const entries = await getArray<JournalEntry>(KEYS.journalEntries);
-    return entries.find((e) => e.id === id) ?? null;
+    if (!this.initialized) throw new Error("Database not initialized");
+    const entries = await this.getArray<JournalEntry>(AsyncDatabase.KEYS.journalEntries);
+    return this.filterJournalEntries(entries).find((entry) => entry.id === id) ?? null;
   }
 
-  async updateJournalEntry(
-    id: number,
-    title: string,
-    content: string
-  ): Promise<void> {
-    if (!this.initialized || !this.currentUserId)
-      throw new Error("Database not initialized");
-    const KEYS = makeKeys(this.currentUserId);
-    const entries = await getArray<JournalEntry>(KEYS.journalEntries);
-    const idx = entries.findIndex((e) => e.id === id);
+  async updateJournalEntry(id: number, title: string, content: string): Promise<void> {
+    if (!this.initialized) throw new Error("Database not initialized");
+    const entries = await this.getArray<JournalEntry>(AsyncDatabase.KEYS.journalEntries);
+    const filtered = this.filterJournalEntries(entries);
+    const idx = filtered.findIndex((entry) => entry.id === id);
     if (idx === -1) throw new Error("Journal entry not found");
+
     const now = new Date().toISOString();
-    entries[idx] = { ...entries[idx], title, content, updatedAt: now };
-    await setArray(KEYS.journalEntries, entries);
+    const updatedEntry = { ...filtered[idx], title, content, updatedAt: now };
+
+    const updatedEntries = entries.map((entry) => (entry.id === id ? updatedEntry : entry));
+    await this.setArray(AsyncDatabase.KEYS.journalEntries, updatedEntries);
   }
 
   async deleteJournalEntry(id: number): Promise<void> {
-    if (!this.initialized || !this.currentUserId)
-      throw new Error("Database not initialized");
-    const KEYS = makeKeys(this.currentUserId);
-    const entries = await getArray<JournalEntry>(KEYS.journalEntries);
-    const next = entries.filter((e) => e.id !== id);
-    await setArray(KEYS.journalEntries, next);
+    if (!this.initialized) throw new Error("Database not initialized");
+    const entries = await this.getArray<JournalEntry>(AsyncDatabase.KEYS.journalEntries);
+    const updatedEntries = entries.filter((entry) => entry.id !== id || entry.userId !== this.ensureUser().id);
+    await this.setArray(AsyncDatabase.KEYS.journalEntries, updatedEntries);
   }
 
   async getEntryCount(): Promise<number> {
-    if (!this.initialized || !this.currentUserId)
-      throw new Error("Database not initialized");
-    const KEYS = makeKeys(this.currentUserId);
-    const entries = await getArray<JournalEntry>(KEYS.journalEntries);
-    return entries.length;
+    if (!this.initialized) throw new Error("Database not initialized");
+    const entries = await this.getArray<JournalEntry>(AsyncDatabase.KEYS.journalEntries);
+    return this.filterJournalEntries(entries).length;
   }
 
-  async createCheckinEntry(
-    mood: number,
-    notes: string | null,
-    date: string
-  ): Promise<number> {
-    if (!this.initialized || !this.currentUserId)
-      throw new Error("Database not initialized");
-    const KEYS = makeKeys(this.currentUserId);
+  async createCheckinEntry(mood: number, notes: string | null, date: string): Promise<number> {
+    if (!this.initialized) throw new Error("Database not initialized");
+    const { id: userId, email: userEmail } = this.ensureUser();
     const [entries, counters] = await Promise.all([
-      getArray<CheckinEntry>(KEYS.checkinEntries),
-      getCounters(this.currentUserId),
+      this.getArray<CheckinEntry>(AsyncDatabase.KEYS.checkinEntries),
+      this.getCounters(),
     ]);
-    if (entries.some((e) => e.date === date)) {
+
+    const existingForDate = this.filterCheckinEntries(entries).some((entry) => entry.date === date);
+    if (existingForDate) {
       throw new Error("Checkin for this date already exists");
     }
+
     const id = counters.checkinLastId + 1;
     const now = new Date().toISOString();
-    const entry: CheckinEntry = {
-      id,
-      mood,
-      notes,
-      date,
-      createdAt: now,
-      updatedAt: now,
-    };
+    const entry: CheckinEntry = { id, userId, userEmail, mood, notes, date, createdAt: now, updatedAt: now };
     entries.push(entry);
     entries.sort((a, b) => a.date.localeCompare(b.date));
     await Promise.all([
-      setArray(KEYS.checkinEntries, entries),
-      setCounters(this.currentUserId, { ...counters, checkinLastId: id }),
+      this.setArray(AsyncDatabase.KEYS.checkinEntries, entries),
+      this.setCounters({ ...counters, checkinLastId: id }),
     ]);
     return id;
   }
 
   async getCheckinEntryByDate(date: string): Promise<CheckinEntry | null> {
-    if (!this.initialized || !this.currentUserId)
-      throw new Error("Database not initialized");
-    const KEYS = makeKeys(this.currentUserId);
-    const entries = await getArray<CheckinEntry>(KEYS.checkinEntries);
-    return entries.find((e) => e.date === date) ?? null;
+    if (!this.initialized) throw new Error("Database not initialized");
+    const entries = await this.getArray<CheckinEntry>(AsyncDatabase.KEYS.checkinEntries);
+    return this.filterCheckinEntries(entries).find((entry) => entry.date === date) ?? null;
   }
 
-  async updateCheckinEntry(
-    id: number,
-    mood: number,
-    notes: string | null
-  ): Promise<void> {
-    if (!this.initialized || !this.currentUserId)
-      throw new Error("Database not initialized");
-    const KEYS = makeKeys(this.currentUserId);
-    const entries = await getArray<CheckinEntry>(KEYS.checkinEntries);
-    const idx = entries.findIndex((e) => e.id === id);
+  async updateCheckinEntry(id: number, mood: number, notes: string | null): Promise<void> {
+    if (!this.initialized) throw new Error("Database not initialized");
+    const entries = await this.getArray<CheckinEntry>(AsyncDatabase.KEYS.checkinEntries);
+    const { id: userId } = this.ensureUser();
+    const idx = entries.findIndex((entry) => entry.id === id && entry.userId === userId);
     if (idx === -1) throw new Error("Checkin entry not found");
+
     const now = new Date().toISOString();
     entries[idx] = { ...entries[idx], mood, notes, updatedAt: now };
-    await setArray(KEYS.checkinEntries, entries);
+    await this.setArray(AsyncDatabase.KEYS.checkinEntries, entries);
   }
 
   async deleteCheckinEntry(id: number): Promise<void> {
-    if (!this.initialized || !this.currentUserId)
-      throw new Error("Database not initialized");
-    const KEYS = makeKeys(this.currentUserId);
-    const entries = await getArray<CheckinEntry>(KEYS.checkinEntries);
-    const next = entries.filter((e) => e.id !== id);
-    await setArray(KEYS.checkinEntries, next);
+    if (!this.initialized) throw new Error("Database not initialized");
+    const { id: userId } = this.ensureUser();
+    const entries = await this.getArray<CheckinEntry>(AsyncDatabase.KEYS.checkinEntries);
+    const updatedEntries = entries.filter((entry) => !(entry.id === id && entry.userId === userId));
+    await this.setArray(AsyncDatabase.KEYS.checkinEntries, updatedEntries);
   }
 
   async getAllCheckinEntries(): Promise<CheckinEntry[]> {
-    if (!this.initialized || !this.currentUserId)
-      throw new Error("Database not initialized");
-    const KEYS = makeKeys(this.currentUserId);
-    const entries = await getArray<CheckinEntry>(KEYS.checkinEntries);
-    return entries.sort((a, b) => b.date.localeCompare(a.date));
+    if (!this.initialized) throw new Error("Database not initialized");
+    const entries = await this.getArray<CheckinEntry>(AsyncDatabase.KEYS.checkinEntries);
+    return this.filterCheckinEntries(entries).sort((a, b) => b.date.localeCompare(a.date));
   }
 
   async getCheckinStatistics(): Promise<{
@@ -245,18 +281,16 @@ class AsyncDatabase {
     longestStreak: number;
     averageMood: number;
   }> {
-    if (!this.initialized || !this.currentUserId)
-      throw new Error("Database not initialized");
-    const KEYS = makeKeys(this.currentUserId);
-    const allCheckins = (
-      await getArray<CheckinEntry>(KEYS.checkinEntries)
+    if (!this.initialized) throw new Error("Database not initialized");
+    const checkins = this.filterCheckinEntries(
+      await this.getArray<CheckinEntry>(AsyncDatabase.KEYS.checkinEntries),
     ).sort((a, b) => a.date.localeCompare(b.date));
-    const totalCheckins = allCheckins.length;
-    const { currentStreak, longestStreak } = this.calculateStreaks(allCheckins);
+
+    const totalCheckins = checkins.length;
+    const { currentStreak, longestStreak } = this.calculateStreaks(checkins);
     const averageMood =
-      allCheckins.length > 0
-        ? allCheckins.reduce((sum, e) => sum + e.mood, 0) / allCheckins.length
-        : 0;
+      checkins.length > 0 ? checkins.reduce((sum, entry) => sum + entry.mood, 0) / checkins.length : 0;
+
     return {
       totalCheckins,
       currentStreak,
@@ -270,23 +304,22 @@ class AsyncDatabase {
     data: number[];
     dates: string[];
   }> {
-    if (!this.initialized || !this.currentUserId)
-      throw new Error("Database not initialized");
-    const KEYS = makeKeys(this.currentUserId);
+    if (!this.initialized) throw new Error("Database not initialized");
+    const allCheckins = this.filterCheckinEntries(
+      await this.getArray<CheckinEntry>(AsyncDatabase.KEYS.checkinEntries),
+    );
     const endDate = new Date();
     const startDate = new Date();
     startDate.setDate(endDate.getDate() - days + 1);
-
-    const all = (await getArray<CheckinEntry>(KEYS.checkinEntries))
+    const withinRange = allCheckins
       .filter(
-        (e) =>
-          e.date >= startDate.toISOString().split("T")[0] &&
-          e.date <= endDate.toISOString().split("T")[0]
+        (entry) =>
+          entry.date >= startDate.toISOString().split("T")[0] && entry.date <= endDate.toISOString().split("T")[0],
       )
       .sort((a, b) => a.date.localeCompare(b.date));
 
     const dataMap = new Map<string, number>();
-    all.forEach((e) => dataMap.set(e.date, e.mood));
+    withinRange.forEach((entry) => dataMap.set(entry.date, entry.mood));
 
     const labels: string[] = [];
     const data: number[] = [];
@@ -308,6 +341,39 @@ class AsyncDatabase {
     return { labels, data, dates };
   }
 
+  async clearCurrentUserData(): Promise<void> {
+    if (!this.user) return;
+
+    const { id } = this.user;
+    const scopedPrefix = `${AsyncDatabase.STORAGE_PREFIX}:${id}:`;
+    const baseKeys = Object.values(AsyncDatabase.KEYS).map((key) => `${scopedPrefix}${key}`);
+    const allKeys = await AsyncStorage.getAllKeys();
+    const scopedKeys = allKeys.filter((key) => key.startsWith(scopedPrefix));
+    const targets = Array.from(new Set([...baseKeys, ...scopedKeys]));
+
+    if (targets.length > 0) {
+      await AsyncStorage.multiRemove(targets);
+    }
+
+    this.initialized = false;
+    await this.init();
+  }
+
+  async clearAllData(): Promise<void> {
+    const allKeys = await AsyncStorage.getAllKeys();
+    const prefix = `${AsyncDatabase.STORAGE_PREFIX}:`;
+    const toRemove = allKeys.filter(
+      (key) => key.startsWith(prefix) || AsyncDatabase.LEGACY_KEYS.includes(key),
+    );
+
+    if (toRemove.length > 0) {
+      await AsyncStorage.multiRemove(toRemove);
+    }
+
+    this.initialized = false;
+    this.user = null;
+  }
+
   private calculateStreaks(checkins: CheckinEntry[]): {
     currentStreak: number;
     longestStreak: number;
@@ -322,12 +388,10 @@ class AsyncDatabase {
 
     let currentStreak = 0;
     let longestStreak = 0;
-    let tempStreak = 0;
+    let tempStreak = 1;
 
     const today = new Date().toISOString().split("T")[0];
-    const todayIndex = sortedCheckins.findIndex(
-      (entry) => entry.date === today
-    );
+    const todayIndex = sortedCheckins.findIndex((entry) => entry.date === today);
 
     if (todayIndex >= 0) {
       for (let i = todayIndex; i >= 0; i--) {
@@ -338,8 +402,7 @@ class AsyncDatabase {
           currentStreak = 1;
         } else if (previousDate) {
           const dayDiff = Math.floor(
-            (currentDate.getTime() - previousDate.getTime()) /
-              (1000 * 60 * 60 * 24)
+            (currentDate.getTime() - previousDate.getTime()) / (1000 * 60 * 60 * 24),
           );
           if (dayDiff === 1) {
             currentStreak++;
@@ -350,7 +413,6 @@ class AsyncDatabase {
       }
     }
 
-    tempStreak = 1;
     for (let i = 1; i < sortedCheckins.length; i++) {
       const currentDate = new Date(sortedCheckins[i].date);
       const previousDate = new Date(sortedCheckins[i - 1].date);
@@ -364,6 +426,7 @@ class AsyncDatabase {
         tempStreak = 1;
       }
     }
+
     longestStreak = Math.max(longestStreak, tempStreak);
 
     return { currentStreak, longestStreak };

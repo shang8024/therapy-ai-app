@@ -5,10 +5,12 @@ import { Tabs, router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LEGAL_ACCEPT_KEY } from "@/constants/legal";
 import LoadingScreen from "@/components/LoadingScreen";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export default function ProtectedTabsLayout() {
   const [ready, setReady] = React.useState(false);
   const [accepted, setAccepted] = React.useState<boolean | null>(null);
+  const { theme } = useTheme();
 
   React.useEffect(() => {
     (async () => {
@@ -33,6 +35,16 @@ export default function ProtectedTabsLayout() {
         headerShown: false,
         tabBarShowLabel: true,
         lazy: true,
+        tabBarActiveTintColor: theme.colors.primary,
+        tabBarInactiveTintColor: theme.colors.textSecondary,
+        tabBarStyle: {
+          backgroundColor: theme.colors.surface,
+          borderTopColor: theme.colors.border,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: "500",
+        },
       }}
     >
       <Tabs.Screen
