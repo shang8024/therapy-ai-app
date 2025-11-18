@@ -306,8 +306,7 @@ export const DashboardProvider: React.FC<Props> = ({ children }) => {
         console.log("DashboardContext: No check-ins found in cloud");
       }
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error("DashboardContext: Failed to sync from cloud:", err);
+      // Silently fail sync - will retry on next refresh
       throw err;
     }
   }, [user?.id, isInitialized]);

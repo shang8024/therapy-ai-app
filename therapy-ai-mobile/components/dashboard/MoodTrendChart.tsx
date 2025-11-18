@@ -96,7 +96,7 @@ export const MoodTrendChart: React.FC<MoodTrendChartProps> = ({
     backgroundColor: '#ffffff',
     backgroundGradientFrom: '#ffffff',
     backgroundGradientTo: '#ffffff',
-    decimalPlaces: 1,
+    decimalPlaces: 0,
     color: (opacity = 1) => `rgba(52, 152, 219, ${opacity})`,
     labelColor: (opacity = 1) => `rgba(127, 140, 141, ${opacity})`,
     style: {
@@ -110,6 +110,10 @@ export const MoodTrendChart: React.FC<MoodTrendChartProps> = ({
     propsForBackgroundLines: {
       strokeDasharray: '5,5',
       stroke: '#ecf0f1',
+    },
+    formatYLabel: (value: string) => {
+      const num = Math.round(parseFloat(value));
+      return num >= 1 && num <= 5 ? num.toString() : "";
     },
   };
 
@@ -167,6 +171,9 @@ export const MoodTrendChart: React.FC<MoodTrendChartProps> = ({
           }}
           width={screenWidth - 40}
           height={220}
+          yAxisInterval={1}
+          segments={4}
+          fromZero={false}
           chartConfig={chartConfig}
           bezier
           style={styles.chart}
