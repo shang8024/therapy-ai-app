@@ -1,4 +1,10 @@
-import { Slot, router, usePathname, useSegments } from "expo-router";
+import {
+  Slot,
+  router,
+  usePathname,
+  useSegments,
+  useRootNavigationState,
+} from "expo-router";
 import { AppProviders } from "@/contexts/AppProvider";
 import React from "react";
 import * as Notifications from "expo-notifications";
@@ -12,9 +18,11 @@ function RootLayoutNav() {
   const { session, user, loading: authLoading } = useAuth();
   const segments = useSegments();
   const pathname = usePathname();
+  const rootNavigationState = useRootNavigationState();
   const [accepted, setAccepted] = React.useState<boolean | null>(null);
   const [bootDone, setBootDone] = React.useState(false);
   const pendingTargetRef = React.useRef<string | null>(null);
+  const handledNotificationRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
     (async () => {
@@ -31,18 +39,42 @@ function RootLayoutNav() {
   const lastNotificationResponse = Notifications.useLastNotificationResponse();
 
   React.useEffect(() => {
+    if (!rootNavigationState?.key) return; // Wait for router to be ready
     if (lastNotificationResponse) {
+      const notificationId =
+        lastNotificationResponse.notification.request.identifier;
+
+      // Skip if we've already handled this notification
+      if (handledNotificationRef.current === notificationId) {
+        return;
+      }
+
       const target = lastNotificationResponse.notification.request.content.data
         ?.target as string | undefined;
       if (target) {
-        if (accepted && session) {
-          router.push(target);
+        // If user is already in the app (not on auth screens), they must have accepted
+        const isInApp = segments[0] === "(tabs)";
+        const canNavigate = session && (accepted || isInApp);
+
+        if (canNavigate) {
+          // Mark as handled before navigating
+          handledNotificationRef.current = notificationId;
+          setImmediate(() => {
+            console.log("🚀 Navigating to:", target);
+            router.push(target);
+          });
         } else {
           pendingTargetRef.current = target;
         }
       }
     }
-  }, [lastNotificationResponse, accepted, session]);
+  }, [
+    lastNotificationResponse,
+    accepted,
+    session,
+    rootNavigationState?.key,
+    segments,
+  ]);
 
   React.useEffect(() => {
     if (!bootDone || authLoading) return;
