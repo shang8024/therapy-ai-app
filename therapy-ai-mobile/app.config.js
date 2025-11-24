@@ -25,11 +25,13 @@ export default {
     ],
     ios: {
       supportsTablet: true,
+      bundleIdentifier: 'com.anonymous.therapyai',
       infoPlist: {
         NSUserNotificationUsageDescription:
           'We use notifications to remind you to do your daily check-in.',
         NSMicrophoneUsageDescription:
           'This app uses the microphone to record voice messages for your therapy sessions.',
+        ITSAppUsesNonExemptEncryption: false,
       },
     },
     android: {
@@ -48,6 +50,9 @@ export default {
     extra: {
       supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
       supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+      eas: {
+        projectId: 'e4c8f020-1526-4800-b970-e58ae407a033',
+      },
     },
   },
 };
