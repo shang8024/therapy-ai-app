@@ -3,6 +3,7 @@ import { LEGAL_ACCEPT_KEY } from "@/constants/legal";
 
 export interface JournalEntry {
   id: number;
+  journal_id: string; // UUID for cloud sync and deduplication
   userId: string;
   userEmail: string | null;
   title: string;
@@ -13,6 +14,7 @@ export interface JournalEntry {
 
 export interface CheckinEntry {
   id: number;
+  checkin_id: string; // UUID for cloud sync and deduplication
   userId: string;
   userEmail: string | null;
   mood: number;
@@ -132,6 +134,22 @@ class AsyncDatabase {
     return entries.filter((entry) => entry.userId === id);
   }
 
+  /**
+   * Generate a UUID for use in sync operations
+   */
+  private generateUUID(): string {
+    // Use crypto.randomUUID() if available (modern browsers/React Native)
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+    // Fallback: generate a simple UUID v4
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  }
+
   setUser(user: { id: string; email: string | null } | null) {
     const nextId = user?.id ?? null;
     const nextEmail = user?.email ?? null;
@@ -168,6 +186,7 @@ class AsyncDatabase {
       createdAt?: string;
       updatedAt?: string;
       userEmail?: string | null;
+      journal_id?: string; // Optional UUID (will generate if not provided)
     }
   ): Promise<number> {
     if (!this.initialized) throw new Error("Database not initialized");
@@ -179,8 +198,13 @@ class AsyncDatabase {
     const now = new Date().toISOString();
     const id = overrideId ?? counters.journalLastId + 1;
     const filtered = entries.filter((entry) => entry.id !== id);
+    
+    // Generate UUID for journal_id if not provided
+    const journal_id = metadata?.journal_id || this.generateUUID();
+    
     const entry: JournalEntry = {
       id,
+      journal_id,
       userId,
       userEmail: metadata?.userEmail ?? userEmail,
       title,
@@ -266,7 +290,8 @@ class AsyncDatabase {
   async createCheckinEntry(
     mood: number,
     notes: string | null,
-    date: string
+    date: string,
+    checkin_id?: string // Optional UUID (will generate if not provided)
   ): Promise<number> {
     if (!this.initialized) throw new Error("Database not initialized");
     const { id: userId, email: userEmail } = this.ensureUser();
@@ -284,8 +309,13 @@ class AsyncDatabase {
 
     const id = counters.checkinLastId + 1;
     const now = new Date().toISOString();
+    
+    // Generate UUID for checkin_id if not provided
+    const checkinId = checkin_id || this.generateUUID();
+    
     const entry: CheckinEntry = {
       id,
+      checkin_id: checkinId,
       userId,
       userEmail,
       mood,

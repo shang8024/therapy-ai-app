@@ -1,17 +1,8 @@
-/**
- * Sync Manager
- * 
- * Handles synchronization between local AsyncStorage and Supabase cloud.
- * Provides offline-first functionality with cloud backup.
- */
-
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import NetInfo from '@react-native-community/netinfo';
+import { AppState, AppStateStatus } from 'react-native';
 import { database } from '../utils/database.async';
 import * as SupabaseService from './supabase-services';
-
-// ============================================================================
-// SYNC CONFIGURATION
-// ============================================================================
 
 const STORAGE_PREFIX = 'appv1';
 const SYNC_KEYS = {
@@ -32,13 +23,6 @@ interface PendingOperation {
   timestamp: string;
 }
 
-// ============================================================================
-// SYNC STATUS
-// ============================================================================
-
-/**
- * Check if cloud sync is enabled
- */
 export async function isSyncEnabled(): Promise<boolean> {
   try {
     const enabled = await AsyncStorage.getItem(SYNC_KEYS.syncEnabled);
@@ -48,23 +32,14 @@ export async function isSyncEnabled(): Promise<boolean> {
   }
 }
 
-/**
- * Enable cloud sync
- */
 export async function enableSync() {
   await AsyncStorage.setItem(SYNC_KEYS.syncEnabled, 'true');
 }
 
-/**
- * Disable cloud sync
- */
 export async function disableSync() {
   await AsyncStorage.setItem(SYNC_KEYS.syncEnabled, 'false');
 }
 
-/**
- * Get last sync timestamp
- */
 export async function getLastSyncTime(): Promise<Date | null> {
   try {
     const timestamp = await AsyncStorage.getItem(SYNC_KEYS.lastSyncTime);
@@ -74,20 +49,10 @@ export async function getLastSyncTime(): Promise<Date | null> {
   }
 }
 
-/**
- * Update last sync timestamp
- */
 async function updateLastSyncTime() {
   await AsyncStorage.setItem(SYNC_KEYS.lastSyncTime, new Date().toISOString());
 }
 
-// ============================================================================
-// PENDING OPERATIONS QUEUE
-// ============================================================================
-
-/**
- * Get pending sync operations
- */
 async function getPendingOperations(): Promise<PendingOperation[]> {
   try {
     const raw = await AsyncStorage.getItem(SYNC_KEYS.pendingSync);
@@ -97,29 +62,16 @@ async function getPendingOperations(): Promise<PendingOperation[]> {
   }
 }
 
-/**
- * Add operation to pending queue
- */
 async function addPendingOperation(operation: PendingOperation) {
   const pending = await getPendingOperations();
   pending.push(operation);
   await AsyncStorage.setItem(SYNC_KEYS.pendingSync, JSON.stringify(pending));
 }
 
-/**
- * Clear pending operations
- */
 async function clearPendingOperations() {
   await AsyncStorage.setItem(SYNC_KEYS.pendingSync, JSON.stringify([]));
 }
 
-// ============================================================================
-// CHAT SESSION SYNC
-// ============================================================================
-
-/**
- * Sync chat sessions from local to cloud
- */
 export async function syncChatSessionsToCloud(userId: string) {
   try {
     const localSessions = await AsyncStorage.getItem(chatSessionsKey(userId));
@@ -130,7 +82,6 @@ export async function syncChatSessionsToCloud(userId: string) {
     for (const session of sessions) {
       await SupabaseService.createChatSession(userId, session.id, session.title);
       
-      // Sync messages for this session
       const localMessages = await AsyncStorage.getItem(chatMessagesKey(userId, session.id));
       
       if (localMessages) {
@@ -156,14 +107,10 @@ export async function syncChatSessionsToCloud(userId: string) {
   }
 }
 
-/**
- * Sync chat sessions from cloud to local
- */
 export async function syncChatSessionsFromCloud(userId: string) {
   try {
     const cloudSessions = await SupabaseService.getChatSessions(userId);
 
-    // Transform cloud data to local format
     const localSessions = cloudSessions.map(session => ({
       id: session.id,
       title: session.title,
@@ -177,7 +124,6 @@ export async function syncChatSessionsFromCloud(userId: string) {
 
     await AsyncStorage.setItem(chatSessionsKey(userId), JSON.stringify(localSessions));
 
-    // Sync messages for each session
     for (const session of cloudSessions) {
       const cloudMessages = await SupabaseService.getMessages(session.id);
       
@@ -204,28 +150,47 @@ export async function syncChatSessionsFromCloud(userId: string) {
   }
 }
 
-// ============================================================================
-// CHECK-IN SYNC
-// ============================================================================
+function generateUUID(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
 
-/**
- * Sync check-ins to cloud
- */
 export async function syncCheckinsToCloud(userId: string) {
   try {
     const localCheckins = await database.getAllCheckinEntries();
 
     for (const checkin of localCheckins) {
-      // Check if already exists in cloud
-      const existing = await SupabaseService.getCheckinByDate(userId, checkin.date);
-      
-      if (!existing) {
-        await SupabaseService.createCheckin(
-          userId,
-          checkin.mood,
-          checkin.notes,
-          checkin.date
-        );
+      try {
+        let existing = checkin.checkin_id 
+          ? await SupabaseService.getCheckinByUuid(userId, checkin.checkin_id)
+          : null;
+        
+        if (!existing) {
+          existing = await SupabaseService.getCheckinByDate(userId, checkin.date);
+        }
+        
+        if (existing) {
+          await SupabaseService.updateCheckin(existing.id, checkin.mood, checkin.notes);
+          console.log(`[Sync Manager] Updated check-in for date ${checkin.date} (ID: ${existing.id})`);
+        } else {
+          const checkinId = checkin.checkin_id || generateUUID();
+          await SupabaseService.createCheckin(
+            userId,
+            checkin.mood,
+            checkin.notes,
+            checkin.date,
+            checkinId
+          );
+          console.log(`[Sync Manager] Created check-in for date ${checkin.date} (UUID: ${checkinId})`);
+        }
+      } catch (error) {
+        console.error(`[Sync Manager] Error syncing check-in ${checkin.id}:`, error);
       }
     }
 
@@ -236,41 +201,42 @@ export async function syncCheckinsToCloud(userId: string) {
   }
 }
 
-/**
- * Sync check-ins from cloud
- */
 export async function syncCheckinsFromCloud(userId: string) {
   try {
     const cloudCheckins = await SupabaseService.getCheckins(userId);
-
-    // Note: This is a simplified version
-    // In production, you'd want to merge with local data intelligently
     console.log(`Fetched ${cloudCheckins.length} check-ins from cloud`);
-    
-    // You can implement local storage update here if needed
   } catch (error) {
     console.error('Error syncing check-ins from cloud:', error);
     throw error;
   }
 }
 
-// ============================================================================
-// JOURNAL SYNC
-// ============================================================================
-
-/**
- * Sync journal entries to cloud
- */
 export async function syncJournalToCloud(userId: string) {
   try {
     const localEntries = await database.getAllJournalEntries();
 
     for (const entry of localEntries) {
-      await SupabaseService.createJournalEntry(
-        userId,
-        entry.title,
-        entry.content
-      );
+      try {
+        let existing = entry.journal_id
+          ? await SupabaseService.getJournalEntryByUuid(userId, entry.journal_id)
+          : null;
+        
+        if (existing) {
+          await SupabaseService.updateJournalEntry(existing.id, entry.title, entry.content);
+          console.log(`[Sync Manager] Updated journal entry: ${entry.title} (ID: ${existing.id})`);
+        } else {
+          const journalId = entry.journal_id || generateUUID();
+          await SupabaseService.createJournalEntry(
+            userId,
+            entry.title,
+            entry.content,
+            journalId
+          );
+          console.log(`[Sync Manager] Created journal entry: ${entry.title} (UUID: ${journalId})`);
+        }
+      } catch (error) {
+        console.error(`[Sync Manager] Error syncing journal entry ${entry.id}:`, error);
+      }
     }
 
     console.log('Journal entries synced to cloud');
@@ -280,9 +246,6 @@ export async function syncJournalToCloud(userId: string) {
   }
 }
 
-/**
- * Sync journal entries from cloud
- */
 export async function syncJournalFromCloud(userId: string) {
   try {
     const cloudEntries = await SupabaseService.getJournalEntries(userId);
@@ -293,13 +256,6 @@ export async function syncJournalFromCloud(userId: string) {
   }
 }
 
-// ============================================================================
-// FULL SYNC
-// ============================================================================
-
-/**
- * Perform full sync (upload local data to cloud)
- */
 export async function performFullSyncToCloud(userId: string) {
   try {
     console.log('Starting full sync to cloud...');
@@ -318,9 +274,6 @@ export async function performFullSyncToCloud(userId: string) {
   }
 }
 
-/**
- * Perform full sync (download cloud data to local)
- */
 export async function performFullSyncFromCloud(userId: string) {
   try {
     console.log('Starting full sync from cloud...');
@@ -338,15 +291,9 @@ export async function performFullSyncFromCloud(userId: string) {
   }
 }
 
-/**
- * Sync in both directions (merge local and cloud)
- */
 export async function performBidirectionalSync(userId: string) {
   try {
-    // First upload local changes
     await performFullSyncToCloud(userId);
-    
-    // Then download any cloud changes
     await performFullSyncFromCloud(userId);
     
     console.log('Bidirectional sync completed');
@@ -354,5 +301,100 @@ export async function performBidirectionalSync(userId: string) {
     console.error('Bidirectional sync failed:', error);
     throw error;
   }
+}
+
+let networkSubscription: any = null;
+let appStateListener: any = null;
+let syncInterval: NodeJS.Timeout | null = null;
+let isSyncing = false;
+
+export async function performBackgroundSync(): Promise<void> {
+  if (isSyncing) {
+    console.log('[Sync Manager] Sync already in progress, skipping...');
+    return;
+  }
+
+  try {
+    isSyncing = true;
+
+    const netInfo = await NetInfo.fetch();
+    if (!netInfo.isConnected) {
+      console.log('[Sync Manager] No network connection, skipping sync');
+      return;
+    }
+
+    const userId = await SupabaseService.getCurrentUserId();
+    if (!userId) {
+      console.log('[Sync Manager] No user logged in, skipping sync');
+      return;
+    }
+
+    console.log('[Sync Manager] Starting background sync...');
+    
+    await Promise.all([
+      syncCheckinsToCloud(userId),
+      syncJournalToCloud(userId),
+    ]);
+    
+    await updateLastSyncTime();
+    
+    console.log('[Sync Manager] Background sync completed successfully');
+  } catch (error) {
+    console.error('[Sync Manager] Background sync failed:', error);
+  } finally {
+    isSyncing = false;
+  }
+}
+
+export function startBackgroundSync(): void {
+  stopBackgroundSync();
+
+  console.log('[Sync Manager] Starting background sync service...');
+
+  performBackgroundSync();
+
+  networkSubscription = NetInfo.addEventListener((state) => {
+    if (state.isConnected) {
+      console.log('[Sync Manager] Network connected, triggering sync...');
+      performBackgroundSync();
+    } else {
+      console.log('[Sync Manager] Network disconnected');
+    }
+  });
+
+  appStateListener = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+    if (nextAppState === 'active') {
+      console.log('[Sync Manager] App came to foreground, triggering sync...');
+      performBackgroundSync();
+    }
+  });
+
+  syncInterval = setInterval(() => {
+    performBackgroundSync();
+  }, 30000);
+}
+
+export function stopBackgroundSync(): void {
+  if (networkSubscription) {
+    networkSubscription();
+    networkSubscription = null;
+  }
+
+  if (appStateListener) {
+    appStateListener.remove();
+    appStateListener = null;
+  }
+
+  if (syncInterval) {
+    clearInterval(syncInterval);
+    syncInterval = null;
+  }
+
+  console.log('[Sync Manager] Background sync service stopped');
+}
+
+export async function triggerManualSync(): Promise<void> {
+  console.log('[Sync Manager] Manual sync triggered');
+  await performBackgroundSync();
 }
 

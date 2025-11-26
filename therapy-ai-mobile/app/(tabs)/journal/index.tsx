@@ -60,6 +60,7 @@ export default function JournalScreen() {
               createdAt: entry.created_at,
               updatedAt: entry.updated_at,
               userEmail: user.email ?? null,
+              journal_id: entry.journal_id, // Pass the UUID from cloud entry
             }
           );
         }
@@ -120,12 +121,23 @@ export default function JournalScreen() {
 
         Alert.alert("Success", "Journal entry updated successfully");
       } else {
+        // Generate UUID for journal_id before creating entries
+        const journalId = typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+              const r = (Math.random() * 16) | 0;
+              const v = c === 'x' ? r : (r & 0x3) | 0x8;
+              return v.toString(16);
+            });
+
         if (user) {
           try {
+            // Pass the UUID when creating cloud entry
             const cloudEntry = await createJournalEntryCloud(
               user.id,
               title.trim(),
-              content.trim()
+              content.trim(),
+              journalId
             );
             cloudId = cloudEntry?.id;
             cloudCreatedAt = cloudEntry?.created_at;
@@ -139,6 +151,7 @@ export default function JournalScreen() {
           }
         }
 
+        // Pass the same UUID when creating local entry
         await database.createJournalEntry(
           title.trim(),
           content.trim(),
@@ -147,6 +160,7 @@ export default function JournalScreen() {
             createdAt: cloudCreatedAt,
             updatedAt: cloudUpdatedAt,
             userEmail: user?.email ?? null,
+            journal_id: journalId, // Pass the UUID
           }
         );
 

@@ -190,11 +190,19 @@ export const CheckinProvider: React.FC<Props> = ({ children }) => {
               notesForSupabase
             );
           } else {
+            const checkinId = typeof crypto !== 'undefined' && crypto.randomUUID
+              ? crypto.randomUUID()
+              : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+                  const r = (Math.random() * 16) | 0;
+                  const v = c === 'x' ? r : (r & 0x3) | 0x8;
+                  return v.toString(16);
+                });
             cloudCheckin = await createCheckinCloud(
               user.id,
               draft.mood,
               notesForSupabase,
-              dateString
+              dateString,
+              checkinId
             );
           }
         } catch (cloudError) {
@@ -209,10 +217,20 @@ export const CheckinProvider: React.FC<Props> = ({ children }) => {
           notesForSupabase
         );
       } else {
+        // Get the checkin_id from cloud entry if available, otherwise generate one
+        const checkinId = cloudCheckin?.checkin_id || 
+          (typeof crypto !== 'undefined' && crypto.randomUUID
+            ? crypto.randomUUID()
+            : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+                const r = (Math.random() * 16) | 0;
+                const v = c === 'x' ? r : (r & 0x3) | 0x8;
+                return v.toString(16);
+              }));
         await database.createCheckinEntry(
           draft.mood,
           notesForSupabase,
-          dateString
+          dateString,
+          checkinId
         );
       }
 

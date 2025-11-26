@@ -1,20 +1,6 @@
-/**
- * Supabase Service Layer
- *
- * This file contains all Supabase database operations.
- * Handles cloud sync for chat sessions, messages, check-ins, and journal entries.
- */
-
 import { supabase } from "./supabase";
 import { AuthError } from "@supabase/supabase-js";
 
-// ============================================================================
-// ERROR HANDLING UTILITIES
-// ============================================================================
-
-/**
- * Check if error is an authentication error that requires re-login
- */
 function isAuthError(error: any): boolean {
   return (
     error instanceof AuthError ||
@@ -24,9 +10,6 @@ function isAuthError(error: any): boolean {
   );
 }
 
-/**
- * Handle Supabase errors gracefully
- */
 export async function handleSupabaseError(
   error: any,
   operation: string
@@ -34,7 +17,6 @@ export async function handleSupabaseError(
   console.error(`Supabase ${operation} error:`, error);
 
   if (isAuthError(error)) {
-    // Sign out user on auth errors
     try {
       await supabase.auth.signOut();
     } catch (signOutError) {
@@ -45,10 +27,6 @@ export async function handleSupabaseError(
 
   throw error;
 }
-
-// ============================================================================
-// USER PROFILE OPERATIONS
-// ============================================================================
 
 export interface UserProfile {
   id: string;
@@ -62,9 +40,6 @@ export interface UserProfile {
   updated_at: string;
 }
 
-/**
- * Get user profile by ID
- */
 export async function getUserProfile(userId: string): Promise<UserProfile> {
   try {
     const { data, error } = await supabase
@@ -80,16 +55,13 @@ export async function getUserProfile(userId: string): Promise<UserProfile> {
   }
 }
 
-/**
- * Create user profile (called after sign up)
- */
 export async function createUserProfile(userId: string, email: string) {
   const { data, error } = await supabase
     .from("user_profiles")
     .insert({
       id: userId,
       email,
-      display_name: email.split("@")[0], // Default to email username
+      display_name: email.split("@")[0],
       theme_preference: "light",
       reminder_time: "20:00:00",
       notification_enabled: true,
@@ -101,9 +73,6 @@ export async function createUserProfile(userId: string, email: string) {
   return data as UserProfile;
 }
 
-/**
- * Update user profile
- */
 export async function updateUserProfile(
   userId: string,
   updates: Partial<Omit<UserProfile, "id" | "created_at" | "updated_at">>
@@ -119,10 +88,6 @@ export async function updateUserProfile(
   return data as UserProfile;
 }
 
-// ============================================================================
-// CHAT SESSION OPERATIONS
-// ============================================================================
-
 export interface ChatSessionDB {
   id: string;
   user_id: string;
@@ -136,9 +101,6 @@ export interface ChatSessionDB {
   updated_at: string;
 }
 
-/**
- * Get all chat sessions for a user
- */
 export async function getChatSessions(userId: string) {
   const { data, error } = await supabase
     .from("chat_sessions")
@@ -150,9 +112,6 @@ export async function getChatSessions(userId: string) {
   return data as ChatSessionDB[];
 }
 
-/**
- * Create a new chat session
- */
 export async function createChatSession(
   userId: string,
   sessionId: string,
@@ -174,9 +133,7 @@ export async function createChatSession(
   return data as ChatSessionDB;
 }
 
-/**
- * Update chat session
- */
+
 export async function updateChatSession(
   sessionId: string,
   updates: Partial<
@@ -194,9 +151,7 @@ export async function updateChatSession(
   return data as ChatSessionDB;
 }
 
-/**
- * Delete chat session (cascades to messages)
- */
+
 export async function deleteChatSession(sessionId: string) {
   const { error } = await supabase
     .from("chat_sessions")
@@ -206,9 +161,6 @@ export async function deleteChatSession(sessionId: string) {
   if (error) throw error;
 }
 
-/**
- * Toggle pin status for chat session
- */
 export async function togglePinChatSession(
   sessionId: string,
   isPinned: boolean
@@ -220,10 +172,6 @@ export async function togglePinChatSession(
 
   return updateChatSession(sessionId, updates);
 }
-
-// ============================================================================
-// MESSAGE OPERATIONS
-// ============================================================================
 
 export interface MessageDB {
   id: string;
@@ -237,9 +185,6 @@ export interface MessageDB {
   created_at: string;
 }
 
-/**
- * Get all messages for a chat session
- */
 export async function getMessages(chatId: string) {
   const { data, error } = await supabase
     .from("messages")
@@ -251,9 +196,6 @@ export async function getMessages(chatId: string) {
   return data as MessageDB[];
 }
 
-/**
- * Create a new message
- */
 export async function createMessage(
   userId: string,
   chatId: string,
@@ -282,9 +224,6 @@ export async function createMessage(
   return data as MessageDB;
 }
 
-/**
- * Delete all messages in a chat session
- */
 export async function deleteMessages(chatId: string) {
   const { error } = await supabase
     .from("messages")
@@ -294,12 +233,9 @@ export async function deleteMessages(chatId: string) {
   if (error) throw error;
 }
 
-// ============================================================================
-// CHECK-IN OPERATIONS
-// ============================================================================
-
 export interface CheckinDB {
   id: number;
+  checkin_id: string;
   user_id: string;
   mood: number;
   notes: string | null;
@@ -308,9 +244,6 @@ export interface CheckinDB {
   updated_at: string;
 }
 
-/**
- * Get all check-ins for a user
- */
 export async function getCheckins(userId: string) {
   const { data, error } = await supabase
     .from("checkins")
@@ -322,9 +255,6 @@ export async function getCheckins(userId: string) {
   return data as CheckinDB[];
 }
 
-/**
- * Get check-in by date
- */
 export async function getCheckinByDate(userId: string, date: string) {
   const { data, error } = await supabase
     .from("checkins")
@@ -337,23 +267,38 @@ export async function getCheckinByDate(userId: string, date: string) {
   return data as CheckinDB | null;
 }
 
-/**
- * Create check-in
- */
+export async function getCheckinByUuid(userId: string, checkin_id: string) {
+  const { data, error } = await supabase
+    .from("checkins")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("checkin_id", checkin_id)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data as CheckinDB | null;
+}
+
 export async function createCheckin(
   userId: string,
   mood: number,
   notes: string | null,
-  date: string
+  date: string,
+  checkinId?: string
 ) {
+  const uuid = checkinId || generateUUID();
+  
+  const insertData: any = {
+    checkin_id: uuid,
+    user_id: userId,
+    mood,
+    notes,
+    date,
+  };
+
   const { data, error } = await supabase
     .from("checkins")
-    .insert({
-      user_id: userId,
-      mood,
-      notes,
-      date,
-    })
+    .insert(insertData)
     .select()
     .single();
 
@@ -361,9 +306,6 @@ export async function createCheckin(
   return data as CheckinDB;
 }
 
-/**
- * Update check-in
- */
 export async function updateCheckin(
   checkinId: number,
   mood: number,
@@ -380,9 +322,6 @@ export async function updateCheckin(
   return data as CheckinDB;
 }
 
-/**
- * Delete check-in
- */
 export async function deleteCheckin(checkinId: number) {
   const { error } = await supabase
     .from("checkins")
@@ -392,12 +331,9 @@ export async function deleteCheckin(checkinId: number) {
   if (error) throw error;
 }
 
-// ============================================================================
-// JOURNAL ENTRY OPERATIONS
-// ============================================================================
-
 export interface JournalEntryDB {
   id: number;
+  journal_id: string;
   user_id: string;
   title: string;
   content: string;
@@ -405,9 +341,6 @@ export interface JournalEntryDB {
   updated_at: string;
 }
 
-/**
- * Get all journal entries for a user
- */
 export async function getJournalEntries(userId: string) {
   const { data, error } = await supabase
     .from("journal_entries")
@@ -419,9 +352,6 @@ export async function getJournalEntries(userId: string) {
   return data as JournalEntryDB[];
 }
 
-/**
- * Get single journal entry
- */
 export async function getJournalEntry(entryId: number) {
   const { data, error } = await supabase
     .from("journal_entries")
@@ -433,21 +363,47 @@ export async function getJournalEntry(entryId: number) {
   return data as JournalEntryDB;
 }
 
-/**
- * Create journal entry
- */
+export async function getJournalEntryByUuid(userId: string, journal_id: string) {
+  const { data, error } = await supabase
+    .from("journal_entries")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("journal_id", journal_id)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data as JournalEntryDB | null;
+}
+
+function generateUUID(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 export async function createJournalEntry(
   userId: string,
   title: string,
-  content: string
+  content: string,
+  journalId?: string
 ) {
+  const uuid = journalId || generateUUID();
+  
+  const insertData: any = {
+    journal_id: uuid,
+    user_id: userId,
+    title,
+    content,
+  };
+
   const { data, error } = await supabase
     .from("journal_entries")
-    .insert({
-      user_id: userId,
-      title,
-      content,
-    })
+    .insert(insertData)
     .select()
     .single();
 
@@ -455,9 +411,6 @@ export async function createJournalEntry(
   return data as JournalEntryDB;
 }
 
-/**
- * Update journal entry
- */
 export async function updateJournalEntry(
   entryId: number,
   title: string,
@@ -474,9 +427,6 @@ export async function updateJournalEntry(
   return data as JournalEntryDB;
 }
 
-/**
- * Delete journal entry
- */
 export async function deleteJournalEntry(entryId: number) {
   const { error } = await supabase
     .from("journal_entries")
@@ -486,10 +436,6 @@ export async function deleteJournalEntry(entryId: number) {
   if (error) throw error;
 }
 
-// ============================================================================
-// GLOBAL STATISTICS OPERATIONS
-// ============================================================================
-
 export interface GlobalChatStats {
   date: string;
   active_users: number;
@@ -497,18 +443,11 @@ export interface GlobalChatStats {
   avg_messages_per_user: number;
 }
 
-/**
- * Get global chat statistics for a date range
- * This aggregates data across all users
- */
 export async function getGlobalChatStatistics(
   startDate: string,
   endDate: string
 ): Promise<GlobalChatStats[]> {
   try {
-    // Query messages grouped by date to get daily statistics
-    // Note: This requires appropriate RLS policies or a database function
-    // For now, we'll query all messages in the date range and aggregate client-side
     const { data: messages, error: messagesError } = await supabase
       .from('messages')
       .select('user_id, created_at')
@@ -520,7 +459,6 @@ export async function getGlobalChatStatistics(
       return [];
     }
 
-    // Aggregate messages by date
     const statsByDate = new Map<string, {
       users: Set<string>;
       messageCount: number;
@@ -539,7 +477,6 @@ export async function getGlobalChatStatistics(
       stats.messageCount++;
     });
 
-    // Convert to array format
     const result: GlobalChatStats[] = [];
     statsByDate.forEach((stats, date) => {
       const activeUsers = stats.users.size;
@@ -554,7 +491,6 @@ export async function getGlobalChatStatistics(
       });
     });
 
-    // Sort by date
     result.sort((a, b) => a.date.localeCompare(b.date));
 
     return result;
@@ -564,22 +500,10 @@ export async function getGlobalChatStatistics(
   }
 }
 
-// ============================================================================
-// SYNC UTILITIES
-// ============================================================================
-
-/**
- * Check if user is online
- */
 export function isOnline(): boolean {
-  // In a real app, check network connectivity
-  // For now, just check if session exists
   return true;
 }
 
-/**
- * Get current user ID
- */
 export async function getCurrentUserId(): Promise<string | null> {
   const {
     data: { session },
