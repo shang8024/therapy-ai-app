@@ -6,15 +6,11 @@ const NOTIF_SCHEDULED_KEY = "NOTIF_SCHEDULED_V1";
 const NOTIF_IDS_KEY = "NOTIF_IDS_V1";
 const NOTIF_VERSION_KEY = "NOTIF_VERSION_KEY";
 
-// Helper functions to get user-specific keys
-export const getNotifPrefKey = (userId: string) =>
-  `appv1:${NOTIF_PREF_KEY}:${userId}`;
-export const getNotifScheduledKey = (userId: string) =>
-  `appv1:${NOTIF_SCHEDULED_KEY}:${userId}`;
-export const getNotifIdsKey = (userId: string) =>
-  `appv1:${NOTIF_IDS_KEY}:${userId}`;
-export const getNotifVersionKey = (userId: string) =>
-  `appv1:${NOTIF_VERSION_KEY}:${userId}`;
+// Helper functions to get global notification keys
+export const getNotifPrefKey = () => `appv1:${NOTIF_PREF_KEY}`;
+export const getNotifScheduledKey = () => `appv1:${NOTIF_SCHEDULED_KEY}`;
+export const getNotifIdsKey = () => `appv1:${NOTIF_IDS_KEY}`;
+export const getNotifVersionKey = () => `appv1:${NOTIF_VERSION_KEY}`;
 
 export const ANDROID_CHANNEL_ID = `checkin-reminders-v${NOTIF_VERSION}`;
 

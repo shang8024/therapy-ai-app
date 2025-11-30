@@ -66,7 +66,7 @@ export async function getOrRequestNotifPermission(): Promise<
   return "blocked";
 }
 
-export async function scheduleDailyReminders(userId: string): Promise<void> {
+export async function scheduleDailyReminders(): Promise<void> {
   await ensureAndroidChannel();
 
   const ids: string[] = [];
@@ -89,14 +89,14 @@ export async function scheduleDailyReminders(userId: string): Promise<void> {
   }
 
   await AsyncStorage.multiSet([
-    [getNotifIdsKey(userId), JSON.stringify(ids)],
-    [getNotifScheduledKey(userId), "true"],
-    [getNotifVersionKey(userId), String(NOTIF_VERSION)],
+    [getNotifIdsKey(), JSON.stringify(ids)],
+    [getNotifScheduledKey(), "true"],
+    [getNotifVersionKey(), String(NOTIF_VERSION)],
   ]);
 }
 
-export async function cancelDailyReminders(userId: string): Promise<void> {
-  const raw = await AsyncStorage.getItem(getNotifIdsKey(userId));
+export async function cancelDailyReminders(): Promise<void> {
+  const raw = await AsyncStorage.getItem(getNotifIdsKey());
   if (raw) {
     try {
       const ids: string[] = JSON.parse(raw);
@@ -105,19 +105,14 @@ export async function cancelDailyReminders(userId: string): Promise<void> {
       );
     } catch {}
   }
-  await AsyncStorage.multiRemove([
-    getNotifIdsKey(userId),
-    getNotifScheduledKey(userId),
-  ]);
+  await AsyncStorage.multiRemove([getNotifIdsKey(), getNotifScheduledKey()]);
 }
 
-export async function migrateNotificationsIfNeeded(
-  userId: string
-): Promise<void> {
+export async function migrateNotificationsIfNeeded(): Promise<void> {
   const [pref, scheduled, savedVersion] = await AsyncStorage.multiGet([
-    getNotifPrefKey(userId),
-    getNotifScheduledKey(userId),
-    getNotifVersionKey(userId),
+    getNotifPrefKey(),
+    getNotifScheduledKey(),
+    getNotifVersionKey(),
   ]).then((entries) => entries.map(([, v]) => v));
 
   const wants = pref === "true";
@@ -125,25 +120,25 @@ export async function migrateNotificationsIfNeeded(
   const currentVersion = Number(savedVersion ?? "0");
 
   if (!wants) {
-    if (isScheduled) await cancelDailyReminders(userId);
+    if (isScheduled) await cancelDailyReminders();
     return;
   }
 
   if (wants && !isScheduled) {
     const ok = await requestNotificationPermissions();
-    if (ok) await scheduleDailyReminders(userId);
+    if (ok) await scheduleDailyReminders();
     return;
   }
 
   if (wants && isScheduled && currentVersion !== NOTIF_VERSION) {
-    await cancelDailyReminders(userId);
+    await cancelDailyReminders();
     const ok = await requestNotificationPermissions();
-    if (ok) await scheduleDailyReminders(userId);
+    if (ok) await scheduleDailyReminders();
   }
 }
 
-export async function ensureDailyReminderSetup(userId: string): Promise<void> {
+export async function ensureDailyReminderSetup(): Promise<void> {
   const ok = await requestNotificationPermissions();
   if (!ok) return;
-  await scheduleDailyReminders(userId);
+  await scheduleDailyReminders();
 }
