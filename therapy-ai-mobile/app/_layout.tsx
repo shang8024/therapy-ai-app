@@ -9,13 +9,14 @@ import { AppProviders } from "@/contexts/AppProvider";
 import React from "react";
 import * as Notifications from "expo-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { DeviceEventEmitter } from "react-native";
 import LoadingScreen from "@/components/LoadingScreen";
 import { LEGAL_ACCEPT_KEY } from "@/constants/legal";
 import { migrateNotificationsIfNeeded } from "@/lib/notifications";
 import { useAuth } from "@/contexts/AuthContext";
 
 function RootLayoutNav() {
-  const { session, user, loading: authLoading } = useAuth();
+  const { session, loading: authLoading } = useAuth();
   const segments = useSegments();
   const pathname = usePathname();
   const rootNavigationState = useRootNavigationState();
@@ -23,13 +24,6 @@ function RootLayoutNav() {
   const [bootDone, setBootDone] = React.useState(false);
   const pendingTargetRef = React.useRef<string | null>(null);
   const handledNotificationRef = React.useRef<string | null>(null);
-  const hasMigratedRef = React.useRef(false);
-
-  const isReady = bootDone && !authLoading;
-
-  const firstSegment = segments[0];
-  const isAppRoute = firstSegment === "(tabs)" || firstSegment === "index";
-  const isAuthRoute = firstSegment === "(auth)";
 
   React.useEffect(() => {
     (async () => {
@@ -83,59 +77,63 @@ function RootLayoutNav() {
     segments,
   ]);
 
-  // Legal gate + notification migration
   React.useEffect(() => {
-    if (!isReady) return;
+    if (!bootDone || authLoading) return;
+    if (accepted) {
+      (async () => {
+        try {
+          await migrateNotificationsIfNeeded();
+        } finally {
+          const pending = pendingTargetRef.current;
+          if (pending && pathname !== pending) {
+            pendingTargetRef.current = null;
+            router.push(pending);
+          }
+        }
+      })();
+    }
+  }, [bootDone, accepted, pathname, authLoading]);
 
-    // If legal not accepted, always redirect to /legal
+  // Protect routes - redirect to login if not authenticated
+  React.useEffect(() => {
+    if (authLoading || !bootDone) return;
+
+    const first = segments[0];
+    const isProtected = first === "(tabs)";
+    const isAuthRoute = first === "(auth)";
+
+    // Legal gate first
     if (!accepted && pathname !== "/legal") {
       router.replace("/legal");
       return;
     }
 
-    // Only run migration + pending navigation once when we're fully ready
-    if (!accepted || !session || !user?.id) return;
-
-    if (hasMigratedRef.current) {
+    // Auth protection for protected routes
+    if (accepted && !session && !isAuthRoute) {
+      router.replace("/(auth)/login");
+      return;
+    } else if (accepted && session && !isProtected) {
+      // If user is logged in and past legal, prefer any pending deep-link target from notifications
       const pending = pendingTargetRef.current;
       if (pending && pathname !== pending) {
         pendingTargetRef.current = null;
-        router.push(pending);
+        router.replace(pending);
+        return;
       }
-      return;
-    }
-
-    (async () => {
-      try {
-        await migrateNotificationsIfNeeded();
-        hasMigratedRef.current = true;
-      } finally {
-        const pending = pendingTargetRef.current;
-        if (pending && pathname !== pending) {
-          pendingTargetRef.current = null;
-          router.push(pending);
-        }
-      }
-    })();
-  }, [isReady, accepted, pathname, session, user?.id]);
-
-  // Protect routes - redirect to login if not authenticated (after legal accepted)
-  React.useEffect(() => {
-    if (!isReady || !accepted) return;
-
-    if (!session && isAppRoute && !isAuthRoute) {
-      // Redirect to login if trying to access protected route
-      router.replace("/(auth)/login");
-    } else if (session && isAuthRoute) {
-      // Redirect to dashboard if already logged in and trying to access auth routes
+      // Otherwise, go to dashboard
       router.replace("/(tabs)/dashboard");
     }
-  }, [isReady, accepted, session, isAppRoute, isAuthRoute]);
+  }, [accepted, session, authLoading, segments, pathname, bootDone]);
 
-  if (!isReady) {
-    return <LoadingScreen />;
-  }
+  // Listen for 'legal-accepted' event to update state immediately
+  React.useEffect(() => {
+    const sub = DeviceEventEmitter.addListener("legal-accepted", () => {
+      setAccepted(true);
+    });
+    return () => sub.remove();
+  }, []);
 
+  if (!bootDone || authLoading) return <LoadingScreen />;
   return <Slot />;
 }
 
