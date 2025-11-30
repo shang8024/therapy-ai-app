@@ -8,6 +8,7 @@ import {
   Alert,
   Linking,
   Platform,
+  DeviceEventEmitter,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -24,12 +25,8 @@ import {
   getOrRequestNotifPermission,
 } from "@/lib/notifications";
 import { openUrl } from "@/lib/legal";
-import { useAuth } from "@/contexts/AuthContext";
 
 export default function LegalScreen() {
-  const router = useRouter();
-  const { user } = useAuth();
-
   const [tos, setTos] = React.useState(false);
   const [privacy, setPrivacy] = React.useState(false);
   const [wantsNotif, setWantsNotif] = React.useState(false);
@@ -107,11 +104,8 @@ export default function LegalScreen() {
       }
     } catch {}
 
-    if (!user) {
-      router.replace("/(auth)/login");
-      return;
-    }
-    router.replace("/(tabs)/dashboard");
+    // Notify root layout that legal has been accepted; it will handle navigation.
+    DeviceEventEmitter.emit("legal-accepted");
   };
 
   return (
