@@ -43,72 +43,89 @@ export default function DashboardScreen() {
         }
       >
         <View style={styles.header}>
-          <Text style={[styles.title, { color: theme.colors.text }]}>Welcome to Therapy AI</Text>
+          <View style={styles.headerTop}>
+            <View style={styles.headerIconContainer}>
+              <Text style={styles.headerIcon}>✨</Text>
+            </View>
+            <View style={styles.headerTextContainer}>
+              <Text style={[styles.greeting, { color: theme.colors.textSecondary }]}>
+                Welcome back
+              </Text>
+              <Text style={[styles.title, { color: theme.colors.text }]}>
+                Therapy AI
+              </Text>
+            </View>
+          </View>
           <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
             Your personal mental health companion
           </Text>
         </View>
 
-        <View style={styles.cardContainer}>
-          <Link href="/chat" asChild>
-            <TouchableOpacity 
-              style={[
-                styles.card, 
-                { 
-                  backgroundColor: theme.colors.surface, 
-                  borderColor: theme.colors.text
-                }
-              ]}
-              activeOpacity={0.7}
-            >
-              <View style={styles.cardContent}>
-                <Text style={styles.cardIcon}>💬</Text>
-                <Text style={[styles.cardTitle, { color: theme.colors.text }]}>
+        <View style={styles.quickActionsContainer}>
+          <Text style={[styles.sectionLabel, { color: theme.colors.text }]}>
+            Quick Actions
+          </Text>
+          <View style={styles.quickActionsGrid}>
+            <Link href="/chat" asChild>
+              <TouchableOpacity 
+                style={[
+                  styles.quickActionCard, 
+                  { backgroundColor: theme.colors.surface }
+                ]}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.quickActionIconContainer, { backgroundColor: theme.colors.primary + '15' }]}>
+                  <Text style={styles.quickActionIcon}>💬</Text>
+                </View>
+                <Text style={[styles.quickActionTitle, { color: theme.colors.text }]}>
                   Start Chat
                 </Text>
-              </View>
-            </TouchableOpacity>
-          </Link>
-
-          <Link href="/checkin" asChild>
-            <TouchableOpacity 
-              style={[
-                styles.card, 
-                { 
-                  backgroundColor: theme.colors.surface, 
-                  borderColor: theme.colors.text
-                }
-              ]}
-              activeOpacity={0.7}
-            >
-              <View style={styles.cardContent}>
-                <Text style={styles.cardIcon}>📝</Text>
-                <Text style={[styles.cardTitle, { color: theme.colors.text }]}>
-                  Daily Check-in
+                <Text style={[styles.quickActionSubtitle, { color: theme.colors.textSecondary }]}>
+                  Talk with AI
                 </Text>
-              </View>
-            </TouchableOpacity>
-          </Link>
+              </TouchableOpacity>
+            </Link>
 
-          <Link href="/settings" asChild>
-            <TouchableOpacity 
-              style={[
-                styles.card, 
-                { 
-                  backgroundColor: theme.colors.surface, 
-                  borderColor: theme.colors.text
-                }
-              ]}
-              activeOpacity={0.7}
-            >
-              <View style={styles.cardContent}>
-                <Text style={styles.cardIcon}>⚙️</Text>
-                <Text style={[styles.cardTitle, { color: theme.colors.text }]}>
+            <Link href="/checkin" asChild>
+              <TouchableOpacity 
+                style={[
+                  styles.quickActionCard, 
+                  { backgroundColor: theme.colors.surface }
+                ]}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.quickActionIconContainer, { backgroundColor: theme.colors.primary + '15' }]}>
+                  <Text style={styles.quickActionIcon}>📝</Text>
+                </View>
+                <Text style={[styles.quickActionTitle, { color: theme.colors.text }]}>
+                  Check-in
+                </Text>
+                <Text style={[styles.quickActionSubtitle, { color: theme.colors.textSecondary }]}>
+                  Log mood
+                </Text>
+              </TouchableOpacity>
+            </Link>
+
+            <Link href="/settings" asChild>
+              <TouchableOpacity 
+                style={[
+                  styles.quickActionCard, 
+                  { backgroundColor: theme.colors.surface }
+                ]}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.quickActionIconContainer, { backgroundColor: theme.colors.primary + '15' }]}>
+                  <Text style={styles.quickActionIcon}>⚙️</Text>
+                </View>
+                <Text style={[styles.quickActionTitle, { color: theme.colors.text }]}>
                   Settings
                 </Text>
-              </View>
-            </TouchableOpacity>
-          </Link>
+                <Text style={[styles.quickActionSubtitle, { color: theme.colors.textSecondary }]}>
+                  Preferences
+                </Text>
+              </TouchableOpacity>
+            </Link>
+          </View>
         </View>
 
         <View style={styles.analyticsSection}>
@@ -206,98 +223,130 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 24,
   },
   header: {
-    alignItems: "center",
-    marginBottom: 40,
-    paddingTop: 20,
+    marginBottom: 32,
+    paddingTop: 8,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#2c3e50",
-    marginBottom: 8,
-    textAlign: "center",
-  },
-  subtitle: {
-    fontSize: 16,
-    color: "#7f8c8d",
-    textAlign: "center",
-    lineHeight: 22,
-  },
-  cardContainer: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-    justifyContent: "space-evenly",
-  },
-  card: {
-    backgroundColor: "white",
-    marginHorizontal: 4,
-    marginVertical: 8,
-    borderRadius: 12,
-    padding: 20,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-    borderWidth: 3,
-  },
-  cardContent: {
+  headerTop: {
     flexDirection: "row",
     alignItems: "center",
+    marginBottom: 12,
   },
-  cardIcon: {
+  headerIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: "rgba(139, 92, 246, 0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 16,
+  },
+  headerIcon: {
     fontSize: 28,
-    marginRight: 14,
   },
-  cardTitle: {
-    fontSize: 20,
-    fontWeight: "600",
+  headerTextContainer: {
     flex: 1,
   },
-  cardDescription: {
+  greeting: {
     fontSize: 14,
-    lineHeight: 20,
+    fontWeight: "500",
+    marginBottom: 4,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: "800",
+    letterSpacing: -0.5,
+  },
+  subtitle: {
+    fontSize: 15,
+    lineHeight: 22,
+    marginLeft: 72,
+  },
+  quickActionsContainer: {
+    marginBottom: 32,
+  },
+  sectionLabel: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 16,
+    letterSpacing: -0.3,
+  },
+  quickActionsGrid: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  quickActionCard: {
+    flex: 1,
+    borderRadius: 20,
+    padding: 20,
+    alignItems: "center",
+    shadowColor: "#8B5CF6",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  quickActionIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  quickActionIcon: {
+    fontSize: 28,
+  },
+  quickActionTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 4,
+    textAlign: "center",
+  },
+  quickActionSubtitle: {
+    fontSize: 12,
+    textAlign: "center",
   },
   analyticsSection: {
-    marginTop: 20,
-    paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: "#e1e8ed",
+    marginTop: 8,
   },
   analyticsTitle: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: "#2c3e50",
-    marginBottom: 16,
-    textAlign: "center",
+    fontSize: 20,
+    fontWeight: "700",
+    marginBottom: 20,
+    letterSpacing: -0.3,
   },
   dashboardTypeSelector: {
     flexDirection: "row",
-    borderRadius: 12,
-    padding: 4,
+    borderRadius: 16,
+    padding: 6,
     marginBottom: 20,
-    borderWidth: 1,
-    shadowColor: "#000",
+    borderWidth: 2,
+    shadowColor: "#8B5CF6",
     shadowOffset: {
       width: 0,
       height: 2,
     },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowRadius: 6,
     elevation: 3,
   },
   dashboardTypeButton: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 16,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -330,11 +379,13 @@ const styles = StyleSheet.create({
   },
   footer: {
     alignItems: "center",
-    marginTop: "auto",
-    paddingTop: 20,
+    marginTop: 32,
+    paddingTop: 24,
+    paddingBottom: 8,
   },
   footerText: {
-    fontSize: 14,
+    fontSize: 13,
     fontStyle: "italic",
+    opacity: 0.7,
   },
 });

@@ -14,7 +14,6 @@ import {
   showCrisisResources,
   showPrivacy,
   showAbout,
-  showDataManagement,
 } from "@/lib/legal";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
@@ -222,19 +221,26 @@ export default function SettingsScreen() {
             { borderBottomColor: theme.colors.border },
           ]}
         >
-          <Text
-            style={[styles.headerTitleSettings, { color: theme.colors.text }]}
-          >
-            Settings
-          </Text>
-          <Text
-            style={[
-              styles.headerSubtitle,
-              { color: theme.colors.textSecondary },
-            ]}
-          >
-            Customize your therapy experience
-          </Text>
+          <View style={styles.headerTopRow}>
+            <View style={[styles.headerIconContainer, { backgroundColor: theme.colors.primary + '15' }]}>
+              <Text style={styles.headerIcon}>⚙️</Text>
+            </View>
+            <View style={styles.headerTextContainer}>
+              <Text
+                style={[styles.headerTitleSettings, { color: theme.colors.text }]}
+              >
+                Settings
+              </Text>
+              <Text
+                style={[
+                  styles.headerSubtitle,
+                  { color: theme.colors.textSecondary },
+                ]}
+              >
+                Customize your therapy experience
+              </Text>
+            </View>
+          </View>
         </View>
 
         <SettingSection title="Notifications">
@@ -367,13 +373,32 @@ const styles = StyleSheet.create({
   },
   headerSettings: {
     padding: 20,
-    paddingBottom: 30,
+    paddingBottom: 24,
     borderBottomWidth: 1,
   },
+  headerTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  headerIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 16,
+  },
+  headerIcon: {
+    fontSize: 28,
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
   headerTitleSettings: {
-    fontSize: 32,
-    fontWeight: "bold",
-    marginBottom: 5,
+    fontSize: 28,
+    fontWeight: "800",
+    marginBottom: 4,
+    letterSpacing: -0.5,
   },
   sectionTitleSettings: {
     fontSize: 16,

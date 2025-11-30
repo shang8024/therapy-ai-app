@@ -78,5 +78,4 @@ export {
   showCrisisResources,
   showAbout,
   showPrivacy,
-  showDataManagement,
 };

@@ -170,10 +170,18 @@ const styles = StyleSheet.create({
   },
   bubble: {
     maxWidth: "80%",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 20,
-    marginBottom: 2,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderRadius: 22,
+    marginBottom: 4,
+    shadowColor: "#8B5CF6",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   userBubble: {
     backgroundColor: "#007AFF",
