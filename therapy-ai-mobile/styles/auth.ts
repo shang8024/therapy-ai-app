@@ -19,10 +19,23 @@ export const authStyles = StyleSheet.create({
     marginBottom: 40,
     alignItems: "center",
   },
+  headerIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 24,
+  },
+  headerIcon: {
+    fontSize: 40,
+  },
   titleAuth: {
     fontSize: 32,
-    fontWeight: "bold",
+    fontWeight: "800",
     marginBottom: 8,
+    letterSpacing: -0.5,
+    textAlign: "center",
   },
   form: {
     width: "100%",

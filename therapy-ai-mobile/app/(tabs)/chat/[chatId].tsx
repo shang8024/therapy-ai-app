@@ -204,7 +204,13 @@ export default function ChatSessionScreen() {
       >
         <View style={styles.headerContent}>
           <Pressable style={styles.backButton} onPress={handleBackPress}>
-            <View style={[styles.backButtonContainer, { backgroundColor: theme.colors.background }]}>
+            <View style={[
+              styles.backButtonContainer, 
+              { 
+                backgroundColor: theme.colors.primary + '15',
+                borderColor: theme.colors.primary + '30',
+              }
+            ]}>
               <Text
                 style={[styles.backButtonText, { color: theme.colors.primary }]}
               >
@@ -279,15 +285,25 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   backButtonContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1.5,
+    shadowColor: "#8B5CF6",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   backButtonText: {
-    fontSize: 20,
-    fontWeight: "600",
+    fontSize: 22,
+    fontWeight: "700",
+    marginLeft: -1,
   },
   headerTitleContainer: {
     flex: 1,
