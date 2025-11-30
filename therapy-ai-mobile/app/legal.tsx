@@ -38,26 +38,23 @@ export default function LegalScreen() {
   const canAgree = tos && privacy;
 
   React.useEffect(() => {
-    if (!user?.id) return;
     (async () => {
       try {
         const [pref, scheduled] = await AsyncStorage.multiGet([
-          getNotifPrefKey(user.id),
-          getNotifScheduledKey(user.id),
+          getNotifPrefKey(),
+          getNotifScheduledKey(),
         ]).then((entries) => entries.map(([, v]) => v));
         if (pref === "true") return setWantsNotif(true);
         if (pref === "false") return setWantsNotif(false);
         setWantsNotif(scheduled === "true");
       } catch {}
     })();
-  }, [user?.id]);
+  }, []);
 
   const onToggleNotif = async (value: boolean) => {
-    if (!user?.id) return;
-
     if (!value) {
       setWantsNotif(false);
-      await AsyncStorage.setItem(getNotifPrefKey(user.id), "false");
+      await AsyncStorage.setItem(getNotifPrefKey(), "false");
       return;
     }
 
@@ -66,10 +63,10 @@ export default function LegalScreen() {
       const res = await getOrRequestNotifPermission();
       if (res === "granted") {
         setWantsNotif(true);
-        await AsyncStorage.setItem(getNotifPrefKey(user.id), "true");
+        await AsyncStorage.setItem(getNotifPrefKey(), "true");
       } else {
         setWantsNotif(false);
-        await AsyncStorage.setItem(getNotifPrefKey(user.id), "false");
+        await AsyncStorage.setItem(getNotifPrefKey(), "false");
         if (res === "blocked" && Platform.OS === "ios") {
           Alert.alert(
             "Notifications Disabled",
@@ -80,12 +77,12 @@ export default function LegalScreen() {
                 text: "Open Settings",
                 onPress: () => Linking.openSettings?.(),
               },
-            ],
+            ]
           );
         } else {
           Alert.alert(
             "Notifications",
-            "Permission was not granted. You can enable notifications later in Settings.",
+            "Permission was not granted. You can enable notifications later in Settings."
           );
         }
       }
@@ -100,21 +97,20 @@ export default function LegalScreen() {
       return;
     }
 
-    if (!user?.id) {
-      Alert.alert("Error", "User not found. Please try again.");
-      return;
-    }
-
     await AsyncStorage.setItem(LEGAL_ACCEPT_KEY, "true");
 
     try {
       if (wantsNotif) {
-        await migrateNotificationsIfNeeded(user.id);
+        await migrateNotificationsIfNeeded();
       } else {
-        await cancelDailyReminders(user.id);
+        await cancelDailyReminders();
       }
     } catch {}
 
+    if (!user) {
+      router.replace("/(auth)/login");
+      return;
+    }
     router.replace("/(tabs)/dashboard");
   };
 

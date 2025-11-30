@@ -23,6 +23,13 @@ function RootLayoutNav() {
   const [bootDone, setBootDone] = React.useState(false);
   const pendingTargetRef = React.useRef<string | null>(null);
   const handledNotificationRef = React.useRef<string | null>(null);
+  const hasMigratedRef = React.useRef(false);
+
+  const isReady = bootDone && !authLoading;
+
+  const firstSegment = segments[0];
+  const isAppRoute = firstSegment === "(tabs)" || firstSegment === "index";
+  const isAuthRoute = firstSegment === "(auth)";
 
   React.useEffect(() => {
     (async () => {
@@ -76,40 +83,59 @@ function RootLayoutNav() {
     segments,
   ]);
 
+  // Legal gate + notification migration
   React.useEffect(() => {
-    if (!bootDone || authLoading) return;
-    if (accepted && session && user?.id) {
-      (async () => {
-        try {
-          await migrateNotificationsIfNeeded(user.id);
-        } finally {
-          const pending = pendingTargetRef.current;
-          if (pending && pathname !== pending) {
-            pendingTargetRef.current = null;
-            router.push(pending);
-          }
-        }
-      })();
+    if (!isReady) return;
+
+    // If legal not accepted, always redirect to /legal
+    if (!accepted && pathname !== "/legal") {
+      router.replace("/legal");
+      return;
     }
-  }, [bootDone, accepted, pathname, session, user?.id, authLoading]);
 
-  // Protect routes - redirect to login if not authenticated
+    // Only run migration + pending navigation once when we're fully ready
+    if (!accepted || !session || !user?.id) return;
+
+    if (hasMigratedRef.current) {
+      const pending = pendingTargetRef.current;
+      if (pending && pathname !== pending) {
+        pendingTargetRef.current = null;
+        router.push(pending);
+      }
+      return;
+    }
+
+    (async () => {
+      try {
+        await migrateNotificationsIfNeeded();
+        hasMigratedRef.current = true;
+      } finally {
+        const pending = pendingTargetRef.current;
+        if (pending && pathname !== pending) {
+          pendingTargetRef.current = null;
+          router.push(pending);
+        }
+      }
+    })();
+  }, [isReady, accepted, pathname, session, user?.id]);
+
+  // Protect routes - redirect to login if not authenticated (after legal accepted)
   React.useEffect(() => {
-    if (authLoading || !bootDone) return;
+    if (!isReady || !accepted) return;
 
-    const inAuthGroup = segments[0] === "(tabs)" || segments[0] === "index";
-    const isAuthRoute = segments[0] === "(auth)";
-
-    if (!session && inAuthGroup && !isAuthRoute) {
+    if (!session && isAppRoute && !isAuthRoute) {
       // Redirect to login if trying to access protected route
       router.replace("/(auth)/login");
-    } else if (session && segments[0] === "(auth)") {
+    } else if (session && isAuthRoute) {
       // Redirect to dashboard if already logged in and trying to access auth routes
       router.replace("/(tabs)/dashboard");
     }
-  }, [session, authLoading, segments, pathname, bootDone]);
+  }, [isReady, accepted, session, isAppRoute, isAuthRoute]);
 
-  if (!bootDone || authLoading) return <LoadingScreen />;
+  if (!isReady) {
+    return <LoadingScreen />;
+  }
+
   return <Slot />;
 }
 
