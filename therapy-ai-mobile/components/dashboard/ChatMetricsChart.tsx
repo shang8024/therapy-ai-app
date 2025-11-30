@@ -93,18 +93,18 @@ export const ChatMetricsChart: React.FC<ChatMetricsChartProps> = ({
     backgroundGradientFrom: '#ffffff',
     backgroundGradientTo: '#ffffff',
     decimalPlaces: 0,
-    color: (opacity = 1) => `rgba(155, 89, 182, ${opacity})`,
-    labelColor: (opacity = 1) => `rgba(127, 140, 141, ${opacity})`,
+    color: (opacity = 1) => `rgba(139, 92, 246, ${opacity})`,
+    labelColor: (opacity = 1) => `rgba(100, 116, 139, ${opacity})`,
     style: {
       borderRadius: 16,
     },
     propsForDots: {
-      r: '4',
+      r: '5',
       strokeWidth: '2',
     },
     propsForBackgroundLines: {
       strokeDasharray: '5,5',
-      stroke: '#ecf0f1',
+      stroke: '#E2E8F0',
     },
   };
 
@@ -112,7 +112,7 @@ export const ChatMetricsChart: React.FC<ChatMetricsChartProps> = ({
   const datasets = [
     {
       data: currentData.data,
-      color: (opacity = 1) => `rgba(155, 89, 182, ${opacity})`, // Purple for user messages
+      color: (opacity = 1) => `rgba(139, 92, 246, ${opacity})`, // Purple for user messages
       strokeWidth: 3,
     },
   ];
@@ -220,19 +220,19 @@ export const ChatMetricsChart: React.FC<ChatMetricsChartProps> = ({
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 20,
+    padding: 20,
     marginBottom: 20,
-    shadowColor: '#000',
+    shadowColor: '#8B5CF6',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: '#e1e8ed',
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 5,
+    borderWidth: 2,
+    borderColor: '#E2E8F0',
   },
   header: {
     flexDirection: 'row',
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   timeRangeButtonActive: {
-    backgroundColor: '#9b59b6',
+    backgroundColor: '#8B5CF6',
   },
   timeRangeButtonText: {
     fontSize: 12,

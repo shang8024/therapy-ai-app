@@ -81,14 +81,16 @@ export default function ChatIndexScreen() {
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
+      <View style={styles.emptyIconContainer}>
+        <Text style={styles.emptyIcon}>💬</Text>
+      </View>
       <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>
-        Welcome to Therapy AI
+        No conversations yet
       </Text>
       <Text
         style={[styles.emptySubtitle, { color: theme.colors.textSecondary }]}
       >
-        Start a conversation with your AI companion. Share your thoughts,
-        feelings, or anything on your mind.
+        Start a conversation with your AI companion. Share your thoughts, feelings, or anything on your mind.
       </Text>
       <Pressable
         style={[
@@ -98,7 +100,7 @@ export default function ChatIndexScreen() {
         onPress={handleNewChat}
       >
         <Text style={[styles.buttonText, { color: "#ffffff" }]}>
-          Start Your First Conversation
+          Start Conversation
         </Text>
       </Pressable>
     </View>
@@ -109,21 +111,26 @@ export default function ChatIndexScreen() {
       style={[styles.container, { backgroundColor: theme.colors.background }]}
       edges={["top"]}
     >
-      <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
-        <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
-          Chat Sessions
-        </Text>
-        <Pressable
-          style={[
-            styles.buttonSmall,
-            { backgroundColor: theme.colors.primary },
-          ]}
-          onPress={handleNewChat}
-        >
-          <Text style={[styles.buttonText, { color: "#FFFFFF" }]}>
-            + New Chat
-          </Text>
-        </Pressable>
+      <View style={[styles.header, { borderBottomColor: theme.colors.border, backgroundColor: theme.colors.surface }]}>
+        <View style={styles.headerContent}>
+          <View style={styles.headerTextWrapper}>
+            <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
+              Conversations
+            </Text>
+            <Text style={[styles.headerSubtitle, { color: theme.colors.textSecondary }]}>
+              {chatSessions.length} {chatSessions.length === 1 ? 'session' : 'sessions'}
+            </Text>
+          </View>
+          <Pressable
+            style={[
+              styles.newChatButton,
+              { backgroundColor: theme.colors.primary },
+            ]}
+            onPress={handleNewChat}
+          >
+            <Text style={styles.newChatButtonIcon}>+</Text>
+          </Pressable>
+        </View>
       </View>
 
       {chatSessions.length === 0 ? (
@@ -145,34 +152,154 @@ export default function ChatIndexScreen() {
         />
       )}
 
-      <View
-        style={[
-          styles.footer,
-          {
-            backgroundColor: theme.colors.surface,
-            borderTopColor: theme.colors.border,
-          },
-        ]}
-      >
-        <Text
-          style={[styles.footerText, { color: theme.colors.textSecondary }]}
+      {chatSessions.length > 0 && (
+        <View
+          style={[
+            styles.footer,
+            {
+              backgroundColor: theme.colors.surface,
+              borderTopColor: theme.colors.border,
+            },
+          ]}
         >
-          Your conversations are stored privately on your device
-        </Text>
-      </View>
+          <Text
+            style={[styles.footerText, { color: theme.colors.textSecondary }]}
+          >
+            Your conversations are stored privately on your device
+          </Text>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   ...chatStyles,
+  container: {
+    flex: 1,
+  },
   header: {
-    ...chatStyles.header,
-    paddingVertical: 16,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  headerContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    width: "100%",
+  },
+  headerTextWrapper: {
+    flex: 1,
+    marginRight: 12,
+    minWidth: 0,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: "800",
+    letterSpacing: -0.5,
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  newChatButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#8B5CF6",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+    marginTop: 2,
+    flexShrink: 0,
+  },
+  newChatButtonIcon: {
+    color: "#FFFFFF",
+    fontSize: 32,
+    fontWeight: "200",
+    lineHeight: 32,
   },
   startChatButton: {
+    paddingHorizontal: 40,
+    paddingVertical: 18,
+    borderRadius: 28,
+    shadowColor: "#8B5CF6",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  listContainer: {
+    paddingTop: 16,
+    paddingBottom: 20,
+    paddingHorizontal: 0,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: 32,
+    paddingVertical: 60,
+  },
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "rgba(139, 92, 246, 0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 24,
+  },
+  emptyIcon: {
+    fontSize: 40,
+  },
+  emptyTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: 12,
+    letterSpacing: -0.3,
+  },
+  emptySubtitle: {
+    fontSize: 16,
+    textAlign: "center",
+    lineHeight: 24,
+    marginBottom: 32,
+  },
+  footer: {
     paddingVertical: 16,
-    borderRadius: 25,
+    paddingHorizontal: 20,
+    borderTopWidth: 1,
+    alignItems: "center",
+  },
+  footerText: {
+    fontSize: 12,
+    textAlign: "center",
+    opacity: 0.7,
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    letterSpacing: 0.3,
   },
 });

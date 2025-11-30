@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { useAuth } from "../../contexts/AuthContext";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -53,20 +54,22 @@ export default function SignupScreen() {
   };
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
+    <LinearGradient
+      colors={[theme.colors.gradient.start, theme.colors.gradient.end]}
+      style={styles.container}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.keyboardView}
-      >
-        <View style={styles.content}>
+      <SafeAreaView style={styles.container}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.keyboardView}
+        >
+          <View style={styles.content}>
           <View style={styles.headerAuth}>
-            <Text style={[styles.titleAuth, { color: theme.colors.text }]}>
+            <Text style={[styles.titleAuth, { color: "#FFFFFF" }]}>
               Create Account
             </Text>
             <Text
-              style={[styles.subtitle, { color: theme.colors.textSecondary }]}
+              style={[styles.subtitle, { color: "rgba(255,255,255,0.9)" }]}
             >
               Join us to start your therapy journey
             </Text>
@@ -195,6 +198,7 @@ export default function SignupScreen() {
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
+    </LinearGradient>
   );
 }
 

@@ -141,27 +141,29 @@ export default function ChatSessionScreen() {
   };
 
   const renderEmptyState = () => (
-    <View style={styles.emptyState}>
-      <Text
-        style={[
-          styles.emptyTitle,
-          styles.emptyTitleChat,
-          { color: theme.colors.text },
-        ]}
-      >
-        Start the conversation
-      </Text>
-      <Text
-        style={[
-          styles.emptySubtitle,
-          styles.emptySubtitleChat,
-          { color: theme.colors.textSecondary },
-        ]}
-      >
-        Share what's on your mind. Your AI companion is here to listen and
-        provide gentle guidance.
-      </Text>
-    </View>
+      <View style={styles.emptyState}>
+        <View style={styles.emptyIconContainer}>
+          <Text style={styles.emptyIcon}>💭</Text>
+        </View>
+        <Text
+          style={[
+            styles.emptyTitle,
+            styles.emptyTitleChat,
+            { color: theme.colors.text },
+          ]}
+        >
+          Start the conversation
+        </Text>
+        <Text
+          style={[
+            styles.emptySubtitle,
+            styles.emptySubtitleChat,
+            { color: theme.colors.textSecondary },
+          ]}
+        >
+          Share what's on your mind. Your AI companion is here to listen and provide gentle guidance.
+        </Text>
+      </View>
   );
 
   if (!currentChatId || currentChatId !== chatId) {
@@ -196,30 +198,42 @@ export default function ChatSessionScreen() {
           styles.header,
           {
             borderBottomColor: theme.colors.border,
+            backgroundColor: theme.colors.surface,
           },
         ]}
       >
-        <Pressable style={styles.backButton} onPress={handleBackPress}>
-          <Text
-            style={[styles.backButtonText, { color: theme.colors.primary }]}
+        <View style={styles.headerContent}>
+          <Pressable style={styles.backButton} onPress={handleBackPress}>
+            <View style={[styles.backButtonContainer, { backgroundColor: theme.colors.background }]}>
+              <Text
+                style={[styles.backButtonText, { color: theme.colors.primary }]}
+              >
+                ←
+              </Text>
+            </View>
+          </Pressable>
+          <View style={styles.headerTitleContainer}>
+            <Text
+              style={[styles.headerTitle, { color: theme.colors.text }]}
+              numberOfLines={1}
+            >
+              {currentSession?.title || "Chat"}
+            </Text>
+            {currentSession?.lastMessageAt && (
+              <Text style={[styles.headerSubtitle, { color: theme.colors.textSecondary }]}>
+                Last active {currentSession.lastMessageAt.toLocaleDateString()}
+              </Text>
+            )}
+          </View>
+          <Pressable
+            style={[styles.crisisButton, { backgroundColor: theme.colors.error + '15' }]}
+            onPress={() => setShowCrisisModal(true)}
           >
-            ← Back
-          </Text>
-        </Pressable>
-        <Text
-          style={[styles.headerTitle, { color: theme.colors.text }]}
-          numberOfLines={1}
-        >
-          {currentSession?.title || "Chat"}
-        </Text>
-        <Pressable
-          style={[styles.buttonSmall, { backgroundColor: theme.colors.error }]}
-          onPress={() => setShowCrisisModal(true)}
-        >
-          <Text style={[styles.buttonText, { color: "#FFFFFF" }]}>
-            Crisis Help
-          </Text>
-        </Pressable>
+            <Text style={[styles.crisisButtonText, { color: theme.colors.error }]}>
+              🆘
+            </Text>
+          </Pressable>
+        </View>
       </View>
 
       <KeyboardAvoidingView
@@ -250,15 +264,54 @@ export default function ChatSessionScreen() {
 
 const styles = StyleSheet.create({
   ...chatStyles,
-  headerTitle: {
-    ...chatStyles.headerTitle,
-    flex: 1,
-    marginHorizontal: 16,
+  header: {
+    ...chatStyles.header,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingBottom: 20,
+  },
+  headerContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
   },
   backButton: {
     paddingVertical: 4,
   },
+  backButtonContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   backButtonText: {
+    fontSize: 20,
+    fontWeight: "600",
+  },
+  headerTitleContainer: {
+    flex: 1,
+    marginHorizontal: 8,
+  },
+  headerTitle: {
+    ...chatStyles.headerTitle,
+    fontSize: 18,
+    fontWeight: "700",
+    textAlign: "left",
+    marginBottom: 2,
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  crisisButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  crisisButtonText: {
     fontSize: 16,
   },
   keyboardAvoidingView: {
@@ -272,11 +325,36 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
   },
+  emptyState: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 32,
+    paddingVertical: 60,
+  },
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "rgba(139, 92, 246, 0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 24,
+  },
+  emptyIcon: {
+    fontSize: 40,
+  },
   emptyTitleChat: {
-    fontSize: 28,
-    marginBottom: 16,
+    fontSize: 24,
+    fontWeight: "700",
+    marginBottom: 12,
+    letterSpacing: -0.3,
+    textAlign: "center",
   },
   emptySubtitleChat: {
+    fontSize: 16,
+    lineHeight: 24,
+    textAlign: "center",
     marginBottom: 32,
   },
   // Modal Styles
