@@ -3,6 +3,7 @@ import NetInfo from '@react-native-community/netinfo';
 import { AppState, AppStateStatus } from 'react-native';
 import { database } from '../utils/database.async';
 import * as SupabaseService from './supabase-services';
+import { database as asyncDb } from '../utils/database.async';
 
 const STORAGE_PREFIX = 'appv1';
 const SYNC_KEYS = {
@@ -259,6 +260,14 @@ export async function syncJournalFromCloud(userId: string) {
 export async function performFullSyncToCloud(userId: string) {
   try {
     console.log('Starting full sync to cloud...');
+    // Ensure async local database is initialized for this user
+    try {
+      asyncDb.setUser({ id: userId, email: null });
+      await asyncDb.init();
+    } catch (e) {
+      console.error('[Sync Manager] Failed to initialize local database:', e);
+      throw e;
+    }
     
     await syncChatSessionsToCloud(userId);
     await syncCheckinsToCloud(userId);
@@ -293,6 +302,14 @@ export async function performFullSyncFromCloud(userId: string) {
 
 export async function performBidirectionalSync(userId: string) {
   try {
+    // Ensure async local database is initialized for this user
+    try {
+      asyncDb.setUser({ id: userId, email: null });
+      await asyncDb.init();
+    } catch (e) {
+      console.error('[Sync Manager] Failed to initialize local database:', e);
+      throw e;
+    }
     await performFullSyncToCloud(userId);
     await performFullSyncFromCloud(userId);
     
@@ -326,6 +343,15 @@ export async function performBackgroundSync(): Promise<void> {
     const userId = await SupabaseService.getCurrentUserId();
     if (!userId) {
       console.log('[Sync Manager] No user logged in, skipping sync');
+      return;
+    }
+
+    // Ensure async local database is initialized for this user
+    try {
+      asyncDb.setUser({ id: userId, email: null });
+      await asyncDb.init();
+    } catch (e) {
+      console.error('[Sync Manager] Failed to initialize local database:', e);
       return;
     }
 
