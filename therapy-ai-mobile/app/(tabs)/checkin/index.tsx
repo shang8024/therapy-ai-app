@@ -27,17 +27,22 @@ export default function CheckinScreen() {
     >
       <ScrollView contentContainerStyle={checkinStyles.scrollContent}>
         <View style={checkinStyles.header}>
-          <Text style={[checkinStyles.title, { color: theme.colors.text }]}>
-            Daily Check-in
-          </Text>
-          <Text
-            style={[
-              checkinStyles.subtitle,
-              { color: theme.colors.textSecondary },
-            ]}
-          >
-            {prettyDate(date)}
-          </Text>
+          <View style={checkinStyles.headerIconContainer}>
+            <Text style={checkinStyles.headerIcon}>📝</Text>
+          </View>
+          <View style={checkinStyles.headerTextContainer}>
+            <Text style={[checkinStyles.title, { color: theme.colors.text }]}>
+              Daily Check-in
+            </Text>
+            <Text
+              style={[
+                checkinStyles.subtitle,
+                { color: theme.colors.textSecondary },
+              ]}
+            >
+              {prettyDate(date)}
+            </Text>
+          </View>
         </View>
 
         {!isEditing && record ? <CheckinRecord /> : <CheckinForm />}

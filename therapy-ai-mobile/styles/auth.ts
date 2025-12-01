@@ -19,10 +19,23 @@ export const authStyles = StyleSheet.create({
     marginBottom: 40,
     alignItems: "center",
   },
+  headerIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 24,
+  },
+  headerIcon: {
+    fontSize: 40,
+  },
   titleAuth: {
     fontSize: 32,
-    fontWeight: "bold",
+    fontWeight: "800",
     marginBottom: 8,
+    letterSpacing: -0.5,
+    textAlign: "center",
   },
   form: {
     width: "100%",
@@ -31,12 +44,23 @@ export const authStyles = StyleSheet.create({
     marginBottom: 20,
   },
   inputAuth: {
-    height: 50,
-    paddingHorizontal: 16,
+    height: 56,
+    paddingHorizontal: 18,
+    borderRadius: 14,
+    fontSize: 16,
   },
   buttonAuth: {
-    height: 50,
-    marginTop: 10,
+    height: 56,
+    marginTop: 16,
+    borderRadius: 16,
+    shadowColor: "#8B5CF6",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   buttonDisabled: {
     opacity: 0.6,

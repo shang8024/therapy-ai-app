@@ -81,7 +81,7 @@ export default function ChatSessionItem({
           <Text style={[styles.date, { color: theme.colors.textSecondary }]}>
             {formatDate(session.lastMessageAt || session.createdAt)}
           </Text>
-          <Text style={[styles.messageCount, { color: theme.colors.textSecondary }]}>
+          <Text style={styles.messageCount}>
             {session.messageCount} message
             {session.messageCount !== 1 ? "s" : ""}
           </Text>
@@ -94,26 +94,28 @@ export default function ChatSessionItem({
 const styles = StyleSheet.create({
   container: {
     backgroundColor: "white",
-    marginHorizontal: 16,
-    marginVertical: 4,
-    borderRadius: 12,
-    shadowColor: "#000",
+    marginHorizontal: 20,
+    marginVertical: 6,
+    borderRadius: 20,
+    shadowColor: "#8B5CF6",
     shadowOffset: {
       width: 0,
-      height: 1,
+      height: 2,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
     elevation: 2,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
   },
   content: {
-    padding: 16,
+    padding: 18,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 4,
+    marginBottom: 8,
   },
   titleContainer: {
     flexDirection: "row",
@@ -123,32 +125,38 @@ const styles = StyleSheet.create({
   },
   pinIcon: {
     fontSize: 14,
-    marginRight: 6,
+    marginRight: 8,
   },
   title: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333333",
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#1E293B",
     flex: 1,
+    letterSpacing: -0.2,
   },
   lastMessage: {
-    fontSize: 14,
-    color: "#666666",
-    lineHeight: 18,
-    marginBottom: 8,
+    fontSize: 15,
+    color: "#64748B",
+    lineHeight: 21,
+    marginBottom: 12,
+    marginTop: 4,
   },
   footer: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
   },
   date: {
     fontSize: 12,
-    color: "#999999",
+    color: "#94A3B8",
+    fontWeight: "500",
   },
   messageCount: {
     fontSize: 12,
-    color: "#007AFF",
-    fontWeight: "500",
+    color: "#8B5CF6",
+    fontWeight: "600",
   },
 });
