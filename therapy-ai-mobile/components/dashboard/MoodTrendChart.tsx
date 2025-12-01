@@ -91,6 +91,9 @@ export const MoodTrendChart: React.FC<MoodTrendChartProps> = ({
 
   const chartData = filteredData.length >= 3 ? filteredData : currentData.data;
   const chartLabels = filteredData.length >= 3 ? filteredLabels : currentData.labels;
+  const nullPointsIndex = chartData
+    .map((value, index) => (value === 0 ? index : -1))
+    .filter((index) => index !== -1);
 
   const chartConfig = {
     backgroundColor: '#ffffff',
@@ -163,16 +166,24 @@ export const MoodTrendChart: React.FC<MoodTrendChartProps> = ({
             labels: chartLabels,
             datasets: [
               {
-                data: chartData,
+                // Cast to number[] to satisfy typings; nulls create gaps visually
+                data: chartData as unknown as number[],
                 color: (opacity = 1) => `rgba(139, 92, 246, ${opacity})`,
                 strokeWidth: 3,
               },
+              // Invisible helper dataset to lock Y-axis to [1,5]
+              {
+                data: [5],
+                color: () => `rgba(0,0,0,0)`,
+                withDots: false,
+              },
             ],
           }}
+          hidePointsAtIndex={nullPointsIndex}
           width={screenWidth - 40}
           height={220}
+          segments={nullPointsIndex.length > 0 ? 5 : 4}
           yAxisInterval={1}
-          segments={4}
           fromZero={false}
           chartConfig={chartConfig}
           bezier
