@@ -64,9 +64,9 @@ export const commonStyles = StyleSheet.create({
 
   // Input styles
   input: {
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
+    borderWidth: 1.5,
+    borderRadius: 12,
+    padding: 14,
     fontSize: 16,
   },
   inputLabel: {
@@ -77,22 +77,33 @@ export const commonStyles = StyleSheet.create({
 
   // Button styles
   button: {
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: "#8B5CF6",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   buttonLarge: {
-    height: 50,
+    height: 56,
+    borderRadius: 16,
   },
   buttonText: {
     fontSize: 16,
     fontWeight: "600",
+    letterSpacing: 0.3,
   },
   buttonTextSmall: {
     fontSize: 14,
     fontWeight: "600",
+    letterSpacing: 0.2,
   },
 
   // Footer styles
@@ -109,16 +120,16 @@ export const commonStyles = StyleSheet.create({
 
   // Card styles
   card: {
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: "#000",
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: "#8B5CF6",
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 5,
   },
 
   // Empty state

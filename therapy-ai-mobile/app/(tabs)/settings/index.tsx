@@ -14,7 +14,6 @@ import {
   showCrisisResources,
   showPrivacy,
   showAbout,
-  showDataManagement,
 } from "@/lib/legal";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
@@ -90,7 +89,10 @@ const SettingSection: React.FC<{
   return (
     <View style={styles.section}>
       <Text
-        style={[styles.sectionTitleSettings, { color: theme.colors.textSecondary }]}
+        style={[
+          styles.sectionTitleSettings,
+          { color: theme.colors.textSecondary },
+        ]}
       >
         {title}
       </Text>
@@ -108,7 +110,6 @@ const SettingSection: React.FC<{
 
 export default function SettingsScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(false);
-  const [biometricsEnabled, setBiometricsEnabled] = React.useState(false);
   const [loadingNotif, setLoadingNotif] = React.useState(false);
   const [syncing, setSyncing] = React.useState(false);
   const [clearingLocal, setClearingLocal] = React.useState(false);
@@ -116,28 +117,25 @@ export default function SettingsScreen() {
   const { user, signOut } = useAuth();
 
   React.useEffect(() => {
-    if (!user?.id) return;
     (async () => {
       try {
         const [pref, scheduled] = await AsyncStorage.multiGet([
-          getNotifPrefKey(user.id),
-          getNotifScheduledKey(user.id),
+          getNotifPrefKey(),
+          getNotifScheduledKey(),
         ]).then((es) => es.map(([, v]) => v));
         if (pref === "true") return setNotificationsEnabled(true);
         if (pref === "false") return setNotificationsEnabled(false);
         setNotificationsEnabled(scheduled === "true");
       } catch {}
     })();
-  }, [user?.id]);
+  }, []);
 
   const onToggleNotifications = async (value: boolean) => {
-    if (!user?.id) return;
-
     if (!value) {
       setNotificationsEnabled(false);
-      await AsyncStorage.setItem(getNotifPrefKey(user.id), "false");
+      await AsyncStorage.setItem(getNotifPrefKey(), "false");
       try {
-        await cancelDailyReminders(user.id);
+        await cancelDailyReminders();
       } catch {}
       return;
     }
@@ -147,14 +145,14 @@ export default function SettingsScreen() {
       const res = await getOrRequestNotifPermission();
 
       if (res === "granted") {
-        await AsyncStorage.setItem(getNotifPrefKey(user.id), "true");
-        await ensureDailyReminderSetup(user.id);
+        await AsyncStorage.setItem(getNotifPrefKey(), "true");
+        await ensureDailyReminderSetup();
         setNotificationsEnabled(true);
         return;
       }
 
       setNotificationsEnabled(false);
-      await AsyncStorage.setItem(getNotifPrefKey(user.id), "false");
+      await AsyncStorage.setItem(getNotifPrefKey(), "false");
 
       if (res === "blocked" && Platform.OS === "ios") {
         Alert.alert(
@@ -198,14 +196,14 @@ export default function SettingsScreen() {
               console.error("Failed to clear local data:", error);
               Alert.alert(
                 "Error",
-                "We could not clear local data. Please try again.",
+                "We could not clear local data. Please try again."
               );
             } finally {
               setClearingLocal(false);
             }
           },
         },
-      ],
+      ]
     );
   }, [user]);
 
@@ -218,19 +216,31 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View
-          style={[styles.headerSettings, { borderBottomColor: theme.colors.border }]}
+          style={[
+            styles.headerSettings,
+            { borderBottomColor: theme.colors.border },
+          ]}
         >
-          <Text style={[styles.headerTitleSettings, { color: theme.colors.text }]}>
-            Settings
-          </Text>
-          <Text
-            style={[
-              styles.headerSubtitle,
-              { color: theme.colors.textSecondary },
-            ]}
-          >
-            Customize your therapy experience
-          </Text>
+          <View style={styles.headerTopRow}>
+            <View style={[styles.headerIconContainer, { backgroundColor: theme.colors.primary + '15' }]}>
+              <Text style={styles.headerIcon}>⚙️</Text>
+            </View>
+            <View style={styles.headerTextContainer}>
+              <Text
+                style={[styles.headerTitleSettings, { color: theme.colors.text }]}
+              >
+                Settings
+              </Text>
+              <Text
+                style={[
+                  styles.headerSubtitle,
+                  { color: theme.colors.textSecondary },
+                ]}
+              >
+                Customize your therapy experience
+              </Text>
+            </View>
+          </View>
         </View>
 
         <SettingSection title="Notifications">
@@ -282,7 +292,12 @@ export default function SettingsScreen() {
               title="Cloud Sync"
               description="Automatically syncing to cloud"
               rightComponent={
-                <Text style={{ color: theme.colors.success || '#10b981', fontWeight: '600' }}>
+                <Text
+                  style={{
+                    color: theme.colors.success || "#10b981",
+                    fontWeight: "600",
+                  }}
+                >
                   ✓ Enabled
                 </Text>
               }
@@ -292,20 +307,16 @@ export default function SettingsScreen() {
             title="Sign Out"
             description="Sign out of your account"
             onPress={async () => {
-              Alert.alert(
-                "Sign Out",
-                "Are you sure you want to sign out?",
-                [
-                  { text: "Cancel", style: "cancel" },
-                  {
-                    text: "Sign Out",
-                    style: "destructive",
-                    onPress: async () => {
-                      await signOut();
-                    },
+              Alert.alert("Sign Out", "Are you sure you want to sign out?", [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Sign Out",
+                  style: "destructive",
+                  onPress: async () => {
+                    await signOut();
                   },
-                ]
-              );
+                },
+              ]);
             }}
             showArrow
           />
@@ -322,32 +333,6 @@ export default function SettingsScreen() {
               ) : undefined
             }
             showArrow={!clearingLocal}
-          />
-        </SettingSection>
-
-        <SettingSection title="Security">
-          <SettingItem
-            title="Biometric Lock"
-            description="Use Face ID or Touch ID to secure the app"
-            rightComponent={
-              <Switch
-                value={biometricsEnabled}
-                onValueChange={setBiometricsEnabled}
-                trackColor={{
-                  false: theme.colors.border,
-                  true: theme.colors.primary,
-                }}
-                thumbColor={
-                  biometricsEnabled ? "#ffffff" : theme.colors.surface
-                }
-              />
-            }
-          />
-          <SettingItem
-            title="Data Management"
-            description="Export or delete your chat history"
-            onPress={showDataManagement}
-            showArrow
           />
         </SettingSection>
 
@@ -388,13 +373,32 @@ const styles = StyleSheet.create({
   },
   headerSettings: {
     padding: 20,
-    paddingBottom: 30,
+    paddingBottom: 24,
     borderBottomWidth: 1,
   },
+  headerTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  headerIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 16,
+  },
+  headerIcon: {
+    fontSize: 28,
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
   headerTitleSettings: {
-    fontSize: 32,
-    fontWeight: "bold",
-    marginBottom: 5,
+    fontSize: 28,
+    fontWeight: "800",
+    marginBottom: 4,
+    letterSpacing: -0.5,
   },
   sectionTitleSettings: {
     fontSize: 16,

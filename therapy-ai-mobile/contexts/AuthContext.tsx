@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabase';
 import { createUserProfile } from '../lib/supabase-services';
 import { performFullSyncToCloud } from '../lib/sync-manager';
 import { database } from '../utils/database';
+import { startBackgroundSync, stopBackgroundSync, triggerManualSync } from '../lib/sync-manager';
+import { AppState, AppStateStatus } from 'react-native';
 
 interface AuthContextValue {
   session: Session | null;
@@ -25,11 +27,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get initial session
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error) {
         console.warn('Session error:', error.message);
-        // If refresh token is invalid, clear the session
         if (error.message.includes('Refresh Token')) {
           console.log('Clearing invalid session...');
           supabase.auth.signOut().catch(console.error);
@@ -54,6 +54,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      console.log('[AuthContext] User logged in, starting background sync...');
+      startBackgroundSync();
+    } else {
+      console.log('[AuthContext] User logged out, stopping background sync...');
+      stopBackgroundSync();
+    }
+
+    return () => {
+      stopBackgroundSync();
+    };
+  }, [user]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+      if (nextAppState === 'active' && user) {
+        console.log('[AuthContext] App came to foreground, triggering sync...');
+        triggerManualSync();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [user]);
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -113,7 +140,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
     try {
       console.log('Starting data sync...');
-      await performFullSyncToCloud(user.id);
+      await triggerManualSync();
       console.log('✅ Data synced successfully');
     } catch (error) {
       console.error('Sync failed:', error);

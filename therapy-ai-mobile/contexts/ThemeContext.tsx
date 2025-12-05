@@ -6,37 +6,61 @@ export interface Theme {
     background: string;
     surface: string;
     primary: string;
+    primaryLight: string;
+    primaryDark: string;
+    secondary: string;
     text: string;
     textSecondary: string;
     border: string;
     error: string;
     success: string;
+    accent: string;
+    gradient: {
+      start: string;
+      end: string;
+    };
   };
 }
 
 export const lightTheme: Theme = {
   colors: {
-    background: "#F5F5F5",
+    background: "#F8F9FF",
     surface: "#FFFFFF",
-    primary: "#007AFF",
-    text: "#333333",
-    textSecondary: "#666666",
-    border: "#D1D1D6",
-    error: "#FF3B30",
-    success: "#34C759",
+    primary: "#8B5CF6",
+    primaryLight: "#A78BFA",
+    primaryDark: "#7C3AED",
+    secondary: "#6366F1",
+    text: "#1E293B",
+    textSecondary: "#64748B",
+    border: "#E2E8F0",
+    error: "#EF4444",
+    success: "#10B981",
+    accent: "#EC4899",
+    gradient: {
+      start: "#8B5CF6",
+      end: "#6366F1",
+    },
   },
 };
 
 export const darkTheme: Theme = {
   colors: {
-    background: "#000000",
-    surface: "#1C1C1E",
-    primary: "#0A84FF",
-    text: "#FFFFFF",
-    textSecondary: "#8E8E93",
-    border: "#48484A",
-    error: "#FF453A",
-    success: "#30D158",
+    background: "#0F172A",
+    surface: "#1E293B",
+    primary: "#A78BFA",
+    primaryLight: "#C4B5FD",
+    primaryDark: "#8B5CF6",
+    secondary: "#818CF8",
+    text: "#F1F5F9",
+    textSecondary: "#94A3B8",
+    border: "#334155",
+    error: "#F87171",
+    success: "#34D399",
+    accent: "#F472B6",
+    gradient: {
+      start: "#8B5CF6",
+      end: "#6366F1",
+    },
   },
 };
 

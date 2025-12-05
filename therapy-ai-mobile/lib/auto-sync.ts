@@ -1,14 +1,6 @@
-/**
- * Auto-Sync Service
- * Automatically syncs data to cloud when user is logged in
- */
-
 import { supabase } from './supabase';
 import * as SupabaseService from './supabase-services';
 
-/**
- * Check if user is logged in
- */
 export async function isUserLoggedIn(): Promise<boolean> {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -18,9 +10,6 @@ export async function isUserLoggedIn(): Promise<boolean> {
   }
 }
 
-/**
- * Get current user ID
- */
 export async function getCurrentUserId(): Promise<string | null> {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -30,9 +19,6 @@ export async function getCurrentUserId(): Promise<string | null> {
   }
 }
 
-/**
- * Auto-save message to cloud (if logged in)
- */
 export async function autoSyncMessage(
   messageId: string,
   chatId: string,
@@ -43,7 +29,7 @@ export async function autoSyncMessage(
 ): Promise<void> {
   try {
     const userId = await getCurrentUserId();
-    if (!userId) return; // Not logged in, skip cloud sync
+    if (!userId) return;
 
     await SupabaseService.createMessage(
       userId,
@@ -56,13 +42,9 @@ export async function autoSyncMessage(
     );
   } catch (error) {
     console.log('Auto-sync message failed (offline or error):', error);
-    // Fail silently - data is already saved locally
   }
 }
 
-/**
- * Auto-save chat session to cloud (if logged in)
- */
 export async function autoSyncChatSession(
   chatId: string,
   updates: {
@@ -93,53 +75,70 @@ export async function autoSyncChatSession(
   }
 }
 
-/**
- * Auto-save check-in to cloud (if logged in)
- */
+function generateUUID(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 export async function autoSyncCheckin(
   mood: number,
   notes: string | null,
-  date: string
+  date: string,
+  checkin_id?: string
 ): Promise<void> {
   try {
     const userId = await getCurrentUserId();
     if (!userId) return;
 
-    // Check if already exists
-    const existing = await SupabaseService.getCheckinByDate(userId, date);
+    let existing = checkin_id
+      ? await SupabaseService.getCheckinByUuid(userId, checkin_id)
+      : null;
+    
+    if (!existing) {
+      existing = await SupabaseService.getCheckinByDate(userId, date);
+    }
     
     if (existing) {
-      // Update existing
       await SupabaseService.updateCheckin(existing.id, mood, notes);
     } else {
-      // Create new
-      await SupabaseService.createCheckin(userId, mood, notes, date);
+      const uuid = checkin_id || generateUUID();
+      await SupabaseService.createCheckin(userId, mood, notes, date, uuid);
     }
   } catch (error) {
     console.log('Auto-sync check-in failed:', error);
   }
 }
 
-/**
- * Auto-save journal entry to cloud (if logged in)
- */
 export async function autoSyncJournalEntry(
   title: string,
-  content: string
+  content: string,
+  journal_id?: string
 ): Promise<void> {
   try {
     const userId = await getCurrentUserId();
     if (!userId) return;
 
-    await SupabaseService.createJournalEntry(userId, title, content);
+    let existing = journal_id
+      ? await SupabaseService.getJournalEntryByUuid(userId, journal_id)
+      : null;
+    
+    if (existing) {
+      await SupabaseService.updateJournalEntry(existing.id, title, content);
+    } else {
+      const uuid = journal_id || generateUUID();
+      await SupabaseService.createJournalEntry(userId, title, content, uuid);
+    }
   } catch (error) {
     console.log('Auto-sync journal failed:', error);
   }
 }
 
-/**
- * Delete from cloud (if logged in)
- */
 export async function autoSyncDeleteChatSession(chatId: string): Promise<void> {
   try {
     const isLoggedIn = await isUserLoggedIn();

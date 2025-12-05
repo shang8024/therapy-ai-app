@@ -53,15 +53,16 @@ export default function SignupScreen() {
   };
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
-    >
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
       >
         <View style={styles.content}>
           <View style={styles.headerAuth}>
+            <View style={[styles.headerIconContainer, { backgroundColor: theme.colors.primary + '15' }]}>
+              <Text style={styles.headerIcon}>✨</Text>
+            </View>
             <Text style={[styles.titleAuth, { color: theme.colors.text }]}>
               Create Account
             </Text>
