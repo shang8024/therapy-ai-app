@@ -25,11 +25,13 @@ export default {
     ],
     ios: {
       supportsTablet: true,
+      bundleIdentifier: 'com.anonymous.therapyai',
       infoPlist: {
         NSUserNotificationUsageDescription:
           "We use notifications to remind you to do your daily check-in.",
         NSMicrophoneUsageDescription:
-          "This app uses the microphone to record voice messages for your therapy sessions.",
+          'This app uses the microphone to record voice messages for your therapy sessions.',
+        ITSAppUsesNonExemptEncryption: false,
       },
     },
     android: {
