@@ -247,35 +247,52 @@ Supabase backend is now ready for use with the Therapy AI app.
 
 ## Deployment Information
 
+Build with:
+
+```
+cd ./therapy-ai-mobile
+
+eas secret:create --name EXPO_PUBLIC_SUPABASE_URL --value "https://your-project.supabase.co"
+eas secret:create --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value "your-anon-key"
+
+eas build -p android --profile production
+```
+
+The Android apk can be downloaded at: https://expo.dev/artifacts/eas/jwHE8pVsJLKxfsZWxWbPvh.apk
+
 ## Individual Contributions
 
-- **Jiale:**
-  - Led the overall UI/UX design, ensuring a clean, accessible, and user-friendly experience across the app.
-  - Implemented navigation structure using Expo Router, including onboarding flow, legal screens, and protected routes.
-  - Developed the onboarding and legal acceptance flow, including notification opt-in and deep linking.
-  - Built the Check-In screen with emoji mood selection, note input, and edit functionality.
-  - Integrated and tested push notification scheduling, handling, and deep linking to Check-In.
+**Jiale:**
 
-- **Patrick:**
-  - Designed and implemented the chat interface, including message bubbles, chat input, and session list.
-  - Developed voice recording and transcription features for chat, integrating with audio APIs and backend.
-  - Built chat session management: create, pin/unpin, delete, and continue conversations.
-  - Implemented theme switching (light/dark mode) and ensured UI/UX consistency in chat-related components.
-  - Contributed to error handling, user feedback, and responsive design for mobile devices.
+- Led the overall UI/UX design, ensuring a clean, accessible, and user-friendly experience across the app.
+- Implemented navigation structure using Expo Router, including onboarding flow, legal screens, and protected routes.
+- Developed the onboarding and legal acceptance flow, including notification opt-in and deep linking.
+- Built the Check-In screen with emoji mood selection, note input, and edit functionality.
+- Integrated and tested push notification scheduling, handling, and deep linking to Check-In.
 
-- **Jingxian:**
-  - Architected and implemented local data persistence using AsyncStorage for chat, check-ins, and journals.
-  - Developed dashboard statistics and mood trend charts, including streaks and mood analytics.
-  - Built the journal feature: create, edit, and browse past entries, with cloud sync support.
-  - Integrated authentication flows and managed user session state.
-  - Implemented data synchronization logic between local storage and Supabase backend.
+**Patrick:**
 
-- **Gaurav:**
-  - Led backend integration with Supabase for authentication, database, and cloud sync.
-  - Developed and deployed Supabase Edge Functions for AI chat (Groq API), text-to-speech (TTS), and speech-to-text (STT).
-  - Managed secure storage and usage of API keys and environment variables.
-  - Set up and maintained EAS build and deployment pipelines for iOS/Android.
-  - Implemented advanced features such as crisis keyword detection and cloud sync conflict resolution.
+- Designed and implemented the chat interface, including message bubbles, chat input, and session list.
+- Developed voice recording and transcription features for chat, integrating with audio APIs and backend.
+- Built chat session management: create, pin/unpin, delete, and continue conversations.
+- Implemented theme switching (light/dark mode) and ensured UI/UX consistency in chat-related components.
+- Contributed to error handling, user feedback, and responsive design for mobile devices.
+- Set up and maintained EAS build and deployment pipelines for iOS/Android.
+
+**Jingxian:**
+
+- Architected and implemented local data persistence using AsyncStorage for chat, check-ins, and journals.
+- Developed dashboard statistics and mood trend charts, including streaks and mood analytics.
+- Built the journal feature: create, edit, and browse past entries, with cloud sync support.
+- Integrated authentication flows and managed user session state.
+- Implemented data synchronization logic between local storage and Supabase backend.
+
+**Gaurav:**
+
+- Led backend integration with Supabase for authentication, database, and cloud sync.
+- Developed and deployed Supabase Edge Functions for AI chat (Groq API), text-to-speech (TTS), and speech-to-text (STT).
+- Managed secure storage and usage of API keys and environment variables.
+- Implemented advanced features such as crisis keyword detection and cloud sync conflict resolution.
 
 ## Lessons Learned and Concluding Remarks
 
@@ -295,3 +312,7 @@ Although there were some bumps at the beginning, we are working smoothly through
 ### Summary
 
 This project provided valuable experience in building a full-stack, cross-platform mobile app with real-world constraints. We deepened our understanding of React Native, Expo, Supabase, and cloud sync patterns, and learned to troubleshoot platform-specific issues. Most importantly, we gained practical experience in collaborative software development, balancing technical challenges with teamwork and adaptability.
+
+```
+
+```
