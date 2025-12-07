@@ -1,5 +1,9 @@
 # Therapy AI App
 
+## Video Demo
+
+- Android APK walkthrough: [`docs/video_demo_android_apk.mp4`](docs/video_demo_android_apk.mp4) or https://youtu.be/tTp56iiF_0k
+
 ## Team Information
 
 - Gaurav Kashyap: 1003971053 gaurav.kashyap@mail.utoronto.ca
@@ -164,6 +168,8 @@ This project meets and exceeds the core technical requirements by implementing r
 
 ## Development Guide
 
+Credentials sent to TA.
+
 To get started, you will need:
 
 - Node.js 18+
@@ -259,6 +265,8 @@ eas build -p android --profile production
 ```
 
 The Android apk can be downloaded at: https://expo.dev/artifacts/eas/jwHE8pVsJLKxfsZWxWbPvh.apk
+
+Or dowanload in latest release: https://github.com/shang8024/therapy-ai-app/releases/tag/production
 
 ## Individual Contributions
 
